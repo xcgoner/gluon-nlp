@@ -106,6 +106,11 @@ class LAMB(Optimizer):
         mean, var = state
         mean[:] = self.beta1 * mean + (1. - self.beta1) * grad
         var[:] = self.beta2 * var + (1. - self.beta2) * square(grad)
+        # # in-place operation
+        # mean *= self.beta1
+        # mean += ((1. - self.beta1) * grad)
+        # var *= self.beta2
+        # var += ((1. - self.beta2) * square(grad))
 
         r1 = weight.norm()
         if not self.bias_correction:

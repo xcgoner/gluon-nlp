@@ -74,6 +74,8 @@ parser.add_argument('--sp_alpha', type=float, default=1.0,
                     help='Inverse temperature for probability rescaling for sentencepiece sampling')
 parser.add_argument('--num_data_workers', type=int, default=8,
                     help='Number of workers to pre-process data.')
+parser.add_argument('--optimizer', type=str, default='bertadam',
+                    help='optimizer')
 
 args = parser.parse_args()
 
@@ -118,7 +120,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx):
         loss_scale_param = {'scale_window': 2000 / num_workers}
     else:
         loss_scale_param = None
-    trainer = hvd.DistributedTrainer(model.collect_params(), 'bertadam', optim_params)
+    trainer = hvd.DistributedTrainer(model.collect_params(), args.optimizer, optim_params)
     fp16_trainer = FP16Trainer(trainer, dynamic_loss_scale=dynamic_loss_scale,
                                loss_scaler_params=loss_scale_param)
 
