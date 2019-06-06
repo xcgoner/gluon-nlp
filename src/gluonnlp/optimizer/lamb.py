@@ -101,16 +101,16 @@ class LAMB(Optimizer):
         # preprocess grad
         grad *= self.rescale_grad
         if self.clip_gradient is not None:
-            grad = clip(grad, -self.clip_gradient, self.clip_gradient)
+            grad[:] = clip(grad, -self.clip_gradient, self.clip_gradient)
 
         mean, var = state
-        mean[:] = self.beta1 * mean + (1. - self.beta1) * grad
-        var[:] = self.beta2 * var + (1. - self.beta2) * square(grad)
+        # mean[:] = self.beta1 * mean + (1. - self.beta1) * grad
+        # var[:] = self.beta2 * var + (1. - self.beta2) * square(grad)
         # # in-place operation
-        # mean *= self.beta1
-        # mean += ((1. - self.beta1) * grad)
-        # var *= self.beta2
-        # var += ((1. - self.beta2) * square(grad))
+        mean *= self.beta1
+        mean += ((1. - self.beta1) * grad)
+        var *= self.beta2
+        var += ((1. - self.beta2) * square(grad))
 
         r1 = weight.norm()
         if not self.bias_correction:
@@ -130,4 +130,5 @@ class LAMB(Optimizer):
         lr *= r
 
         # update weight
-        weight[:] -= lr * g
+        # weight[:] -= lr * g
+        weight -= lr * g
