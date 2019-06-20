@@ -54,7 +54,7 @@ from utils import logging_config
 from bleu import _bpe_to_words, compute_bleu
 import dataprocessor
 
-from gluonnlp.optimizer.local_sgd import LocalSGDTrainer
+from gluonnlp.optimizer.hier_local_sgd import HierLocalSGDTrainer
 
 np.random.seed(100)
 random.seed(100)
@@ -160,6 +160,27 @@ data_test = gluon.data.SimpleDataset([(ele[0], ele[1], len(ele[0]), len(ele[1]),
 ctx = [mx.cpu()] if args.gpus is None or args.gpus == '' else \
     [mx.gpu(int(x)) for x in args.gpus.split(',')]
 num_ctxs = len(ctx)
+
+try:
+    import horovod.mxnet as hvd
+except ImportError:
+    logging.info('horovod must be installed.')
+    exit()
+hvd.init()
+store = None
+num_workers = hvd.size()
+num_local_workers = hvd.local_size()
+rank = hvd.rank()
+local_rank = hvd.local_rank()
+is_master_node = rank == local_rank
+if not args.use_avg_len and hvd.size() > 1:
+    logging.info('Specifying --use-avg-len and setting --batch_size with the '
+                 'target number of tokens would help improve training throughput.')
+
+if args.gpus is not None and args.gpus != '':
+    ctx_list_size = int(math.ceil(len(ctx) / float(num_local_workers)))
+    ctx = ctx[(local_rank * ctx_list_size) : min((local_rank+1)*ctx_list_size, len(ctx))]
+    num_ctxs = len(ctx)
 
 data_train_lengths, data_val_lengths, data_test_lengths = [dataprocessor.get_data_lengths(x)
                                                            for x in
@@ -280,12 +301,14 @@ def train():
         local_sgd_schedule = None
     local_sgd = args.local_sgd
 
+    hvd.broadcast_parameters(model.collect_params(), root_rank=0)
+
     # if local_sgd_epochs is not None:
     #     trainer = gluon.Trainer(model.collect_params(), args.optimizer,
     #                         {'learning_rate': args.lr, 'beta2': 0.98, 'epsilon': 1e-9}, update_on_kvstore=False, local_sgd=2, local_sgd_regularization=args.local_sgd_regularization, local_sgd_regularization_interval=args.local_sgd_regularization_interval)
     #     trainer._local_sgd = local_sgd
     # else:
-    trainer = LocalSGDTrainer(model.collect_params(), args.optimizer,
+    trainer = HierLocalSGDTrainer(model.collect_params(), args.optimizer, hvd
                             {'learning_rate': args.lr, 'beta2': 0.98, 'epsilon': 1e-9}, update_on_kvstore=False, local_sgd=local_sgd, local_sgd_regularization=args.local_sgd_regularization, local_sgd_regularization_interval=args.local_sgd_regularization_interval)
 
     train_data_loader, val_data_loader, test_data_loader \
@@ -309,153 +332,96 @@ def train():
     grad_interval = args.num_accumulated
     model.collect_params().setattr('grad_req', 'add')
     average_start = (len(train_data_loader) // grad_interval) * (args.epochs - args.average_start)
-    average_param_dict_list = None
+    average_param_dict = None
     model.collect_params().zero_grad()
     parallel = Parallel(num_ctxs, parallel_model)
-    
-    average_counter = 0
-
     for epoch_id in range(args.epochs):
         log_avg_loss = 0
         log_wc = 0
         loss_denom = 0
         step_loss = 0
         log_start_time = time.time()
-        epoch_start_time = time.time()
-        # if args.local_sgd > 1 and epoch_id > 0:
-        #     # local sgd, synchronous momentum
-        #     # if epoch_id == 1:
-        #     #     trainer.init_states()
-        #     trainer.allreduce_states()
-        #     grad_interval = args.num_accumulated * 2
-
-        if local_sgd_epochs is not None and epoch_id in local_sgd_epochs:
-            new_local_sgd = local_sgd_schedule[local_sgd_epochs.index(epoch_id)]
-            if new_local_sgd <= 1:
-                new_local_sgd = 1
-                trainer.allreduce_states()
-            trainer._local_sgd = new_local_sgd
-            local_sgd = new_local_sgd
-
-                    
         for batch_id, seqs \
                 in enumerate(train_data_loader):
-            if (local_sgd > 1 or local_sgd_epochs is not None) and epoch_id == 0 and batch_id == grad_interval:
-                # local sgd, synchronous momentum
-                trainer.init_states()
             if batch_id % grad_interval == 0:
                 step_num += 1
                 new_lr = args.lr / math.sqrt(args.num_units) \
                          * min(1. / math.sqrt(step_num), step_num * warmup_steps ** (-1.5))
                 trainer.set_learning_rate(new_lr)
-            if batch_id == 0:
-                src_wc, tgt_wc, bs = np.sum([(shard[2].sum(), shard[3].sum(), shard[0].shape[0])
-                                            for shard in seqs], axis=0)
+            src_wc, tgt_wc, bs = np.sum([(shard[2].sum(), shard[3].sum(), shard[0].shape[0])
+                                         for shard in seqs], axis=0)
             seqs = [[seq.as_in_context(context) for seq in shard]
                     for context, shard in zip(ctx, seqs)]
             Ls = []
             for seq in seqs:
                 parallel.put((seq, args.batch_size))
             Ls = [parallel.get() for _ in range(len(ctx))]
-            if batch_id == 0:
-                src_wc = src_wc.asscalar()
-                tgt_wc = tgt_wc.asscalar()
-                loss_denom += tgt_wc - bs
+            src_wc = src_wc.asscalar()
+            tgt_wc = tgt_wc.asscalar()
+            loss_denom += tgt_wc - bs
             if batch_id % grad_interval == grad_interval - 1 or\
                     batch_id == len(train_data_loader) - 1:
-                step_size = float(loss_denom) / args.batch_size / 100.0
-                # step_size *= (args.num_accumulated / grad_interval)
-                if local_sgd > 1:
-                    step_size /= len(ctx)
-                is_sync = trainer.step(step_size)
-                # grad_interval = args.num_accumulated
+                if average_param_dict is None:
+                    average_param_dict = {k: v.data(ctx[0]).copy() for k, v in
+                                          model.collect_params().items()}
+                trainer.step(float(loss_denom) / args.batch_size / 100.0)
                 param_dict = model.collect_params()
                 param_dict.zero_grad()
                 if step_num > average_start:
-                    average_counter += 1
-                    if average_param_dict_list is None:
-                        average_param_dict_list = [{k: v.data(c).copy() for k, v in
-                                            model.collect_params().items()} for c in ctx]
-                    else:
-                        alpha = 1. / average_counter
-                        for i in range(len(ctx)):
-                            for name, average_param in average_param_dict_list[i].items():
-                                average_param[:] += alpha * (param_dict[name].data(ctx[i]) - average_param)
-            # step_loss += sum([L.asscalar() for L in Ls])
-            # if batch_id % grad_interval == grad_interval - 1 or\
-            #         batch_id == len(train_data_loader) - 1:
-                # loss_denom = 0
-                # step_loss = 0
-            # log_wc += src_wc + tgt_wc
+                    alpha = 1. / max(1, step_num - average_start)
+                    for name, average_param in average_param_dict.items():
+                        average_param[:] += alpha * (param_dict[name].data(ctx[0]) - average_param)
+            step_loss += sum([L.asscalar() for L in Ls])
+            if batch_id % grad_interval == grad_interval - 1 or\
+                    batch_id == len(train_data_loader) - 1:
+                log_avg_loss += step_loss / loss_denom * args.batch_size * 100.0
+                loss_denom = 0
+                step_loss = 0
+            log_wc += src_wc + tgt_wc
             if (batch_id + 1) % (args.log_interval * grad_interval) == 0:
-                # approximate the logging
-                mx.nd.waitall()
-                step_loss = sum([L.asscalar() for L in Ls])
-                log_avg_loss = step_loss / loss_denom * args.batch_size * 100.0
-                log_wc = (src_wc + tgt_wc) * (args.log_interval * grad_interval)
                 wps = log_wc / (time.time() - log_start_time)
-
                 logging.info('[Epoch {} Batch {}/{}] loss={:.4f}, ppl={:.4f}, '
                              'throughput={:.2f}K wps, wc={:.2f}K'
                              .format(epoch_id, batch_id + 1, len(train_data_loader),
-                                     log_avg_loss,
-                                     np.exp(log_avg_loss),
+                                     log_avg_loss / args.log_interval,
+                                     np.exp(log_avg_loss / args.log_interval),
                                      wps / 1000, log_wc / 1000))
                 log_start_time = time.time()
-                # log_avg_loss = 0
-                # log_wc = 0
-        if local_sgd > 1:
-            # synchronous model parameters for local sgd
-            trainer.allreduce_params()
-            trainer.allreduce_states()
-            # if not is_sync:
-            #     average_counter += 1
-            #     if average_param_dict_list is None:
-            #         average_param_dict_list = [{k: v.data(i).copy() for k, v in
-            #                             model.collect_params().items()} for i in ctx]
-            #     else:
-            #         param_dict = model.collect_params()
-            #         alpha = 1. / average_counter
-            #         for i in range(len(ctx)):
-            #             for name, average_param in average_param_dict_list[i].items():
-            #                 average_param[:] += alpha * (param_dict[name].data(ctx[i]) - average_param)
+                log_avg_loss = 0
+                log_wc = 0
+        # sync params
+        trainer.allreduce_params()
+        trainer.allreduce_states()
         mx.nd.waitall()
-        logging.info('[Epoch {}] time={:.2f}s'.format(epoch_id, time.time()-epoch_start_time))
-        if epoch_id >= 5:
-            valid_loss, valid_translation_out = evaluate(val_data_loader, ctx[0])
-            valid_bleu_score, _, _, _, _ = compute_bleu([val_tgt_sentences], valid_translation_out,
-                                                        tokenized=tokenized, tokenizer=args.bleu,
-                                                        split_compound_word=split_compound_word,
-                                                        bpe=bpe)
-            logging.info('[Epoch {}] valid Loss={:.4f}, valid ppl={:.4f}, valid bleu={:.2f}'
-                        .format(epoch_id, valid_loss, np.exp(valid_loss), valid_bleu_score * 100))
-            test_loss, test_translation_out = evaluate(test_data_loader, ctx[0])
-            test_bleu_score, _, _, _, _ = compute_bleu([test_tgt_sentences], test_translation_out,
+        valid_loss, valid_translation_out = evaluate(val_data_loader, ctx[0])
+        valid_bleu_score, _, _, _, _ = compute_bleu([val_tgt_sentences], valid_translation_out,
                                                     tokenized=tokenized, tokenizer=args.bleu,
                                                     split_compound_word=split_compound_word,
                                                     bpe=bpe)
-            logging.info('[Epoch {}] test Loss={:.4f}, test ppl={:.4f}, test bleu={:.2f}'
-                        .format(epoch_id, test_loss, np.exp(test_loss), test_bleu_score * 100))
-            dataprocessor.write_sentences(valid_translation_out,
-                                        os.path.join(args.save_dir,
-                                                    'epoch{:d}_valid_out.txt').format(epoch_id))
-            dataprocessor.write_sentences(test_translation_out,
-                                        os.path.join(args.save_dir,
-                                                    'epoch{:d}_test_out.txt').format(epoch_id))
-            if valid_bleu_score > best_valid_bleu:
-                best_valid_bleu = valid_bleu_score
-                save_path = os.path.join(args.save_dir, 'valid_best.params')
-                logging.info('Save best parameters to {}'.format(save_path))
-                model.save_parameters(save_path)
-        else:
+        logging.info('[Epoch {}] valid Loss={:.4f}, valid ppl={:.4f}, valid bleu={:.2f}'
+                     .format(epoch_id, valid_loss, np.exp(valid_loss), valid_bleu_score * 100))
+        test_loss, test_translation_out = evaluate(test_data_loader, ctx[0])
+        test_bleu_score, _, _, _, _ = compute_bleu([test_tgt_sentences], test_translation_out,
+                                                   tokenized=tokenized, tokenizer=args.bleu,
+                                                   split_compound_word=split_compound_word,
+                                                   bpe=bpe)
+        logging.info('[Epoch {}] test Loss={:.4f}, test ppl={:.4f}, test bleu={:.2f}'
+                     .format(epoch_id, test_loss, np.exp(test_loss), test_bleu_score * 100))
+        dataprocessor.write_sentences(valid_translation_out,
+                                      os.path.join(args.save_dir,
+                                                   'epoch{:d}_valid_out.txt').format(epoch_id))
+        dataprocessor.write_sentences(test_translation_out,
+                                      os.path.join(args.save_dir,
+                                                   'epoch{:d}_test_out.txt').format(epoch_id))
+        if valid_bleu_score > best_valid_bleu:
+            best_valid_bleu = valid_bleu_score
             save_path = os.path.join(args.save_dir, 'valid_best.params')
             logging.info('Save best parameters to {}'.format(save_path))
             model.save_parameters(save_path)
         save_path = os.path.join(args.save_dir, 'epoch{:d}.params'.format(epoch_id))
         model.save_parameters(save_path)
-
     save_path = os.path.join(args.save_dir, 'average.params')
-    mx.nd.save(save_path, average_param_dict_list[0])
+    mx.nd.save(save_path, average_param_dict)
     if args.average_checkpoint:
         for j in range(args.num_averages):
             params = mx.nd.load(os.path.join(args.save_dir,
@@ -468,27 +434,22 @@ def train():
                                  'average_checkpoint_{}.params'.format(args.num_averages))
         model.save_parameters(save_path)
     elif args.average_start > 0:
-        # for k, v in model.collect_params().items():
-        #     v.set_data(average_param_dict[k])
-        param_dict = model.collect_params()
-        for i in range(len(ctx)):
-            for name, average_param in average_param_dict_list[i].items():
-                param_dict[name].data(ctx[i])[:] = average_param
+        for k, v in model.collect_params().items():
+            v.set_data(average_param_dict[k])
+        # sync params
         trainer.allreduce_params()
         mx.nd.waitall()
         save_path = os.path.join(args.save_dir, 'average.params')
         model.save_parameters(save_path)
     else:
         model.load_parameters(os.path.join(args.save_dir, 'valid_best.params'), ctx)
-    # valid_loss, valid_translation_out = evaluate(val_data_loader, ctx[0])
-    valid_loss, valid_translation_out = evaluate(val_data_loader)
+    valid_loss, valid_translation_out = evaluate(val_data_loader, ctx[0])
     valid_bleu_score, _, _, _, _ = compute_bleu([val_tgt_sentences], valid_translation_out,
                                                 tokenized=tokenized, tokenizer=args.bleu, bpe=bpe,
                                                 split_compound_word=split_compound_word)
     logging.info('Best model valid Loss={:.4f}, valid ppl={:.4f}, valid bleu={:.2f}'
                  .format(valid_loss, np.exp(valid_loss), valid_bleu_score * 100))
-    # test_loss, test_translation_out = evaluate(test_data_loader, ctx[0])
-    test_loss, test_translation_out = evaluate(test_data_loader)
+    test_loss, test_translation_out = evaluate(test_data_loader, ctx[0])
     test_bleu_score, _, _, _, _ = compute_bleu([test_tgt_sentences], test_translation_out,
                                                tokenized=tokenized, tokenizer=args.bleu, bpe=bpe,
                                                split_compound_word=split_compound_word)
@@ -498,7 +459,6 @@ def train():
                                   os.path.join(args.save_dir, 'best_valid_out.txt'))
     dataprocessor.write_sentences(test_translation_out,
                                   os.path.join(args.save_dir, 'best_test_out.txt'))
-
 
 
 if __name__ == '__main__':
