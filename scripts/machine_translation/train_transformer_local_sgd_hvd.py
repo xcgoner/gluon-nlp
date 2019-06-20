@@ -56,10 +56,6 @@ import dataprocessor
 
 from gluonnlp.optimizer.hier_local_sgd import HierLocalSGDTrainer
 
-np.random.seed(100)
-random.seed(100)
-mx.random.seed(10000)
-
 os.environ['MXNET_GPU_MEM_POOL_TYPE'] = 'Round'
 
 parser = argparse.ArgumentParser(description='Neural Machine Translation Example.'
@@ -178,6 +174,9 @@ is_master_node = rank == local_rank
 if not args.use_avg_len and hvd.size() > 1:
     logging.info('Specifying --use-avg-len and setting --batch_size with the '
                  'target number of tokens would help improve training throughput.')
+np.random.seed(100 + 10 * rank)
+random.seed(100 + 10 * rank)
+mx.random.seed(10000 + 100 * rank)
 
 if args.gpus is not None and args.gpus != '':
     ctx_list_size = int(math.ceil(len(ctx) / float(num_local_workers)))
