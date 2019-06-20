@@ -309,7 +309,7 @@ def train():
     grad_interval = args.num_accumulated
     model.collect_params().setattr('grad_req', 'add')
     average_start = (len(train_data_loader) // grad_interval) * (args.epochs - args.average_start)
-    average_param_dict = None
+    average_param_dict_list = None
     model.collect_params().zero_grad()
     parallel = Parallel(num_ctxs, parallel_model)
     
@@ -371,15 +371,16 @@ def train():
                 # grad_interval = args.num_accumulated
                 param_dict = model.collect_params()
                 param_dict.zero_grad()
-                if step_num > average_start and is_sync:
+                if step_num > average_start:
                     average_counter += 1
-                    if average_param_dict is None:
-                        average_param_dict = {k: v.data(ctx[0]).copy() for k, v in
-                                            model.collect_params().items()}
+                    if average_param_dict_list is None:
+                        average_param_dict_list = [{k: v.data(c).copy() for k, v in
+                                            model.collect_params().items()} for c in ctx]
                     else:
                         alpha = 1. / average_counter
-                        for name, average_param in average_param_dict.items():
-                            average_param[:] += alpha * (param_dict[name].data(ctx[0]) - average_param)
+                        for i in range(len(ctx)):
+                            for name, average_param in average_param_dict_list[i].items():
+                                average_param[:] += alpha * (param_dict[name].data(ctx[i]) - average_param)
             # step_loss += sum([L.asscalar() for L in Ls])
             # if batch_id % grad_interval == grad_interval - 1 or\
             #         batch_id == len(train_data_loader) - 1:
@@ -406,15 +407,17 @@ def train():
         if local_sgd > 1:
             # synchronous model parameters for local sgd
             trainer.allreduce_params()
-            if not is_sync:
-                average_counter += 1
-                if average_param_dict is None:
-                    average_param_dict = {k: v.data(ctx[0]).copy() for k, v in
-                                        model.collect_params().items()}
-                else:
-                    alpha = 1. / average_counter
-                    for name, average_param in average_param_dict.items():
-                        average_param[:] += alpha * (param_dict[name].data(ctx[0]) - average_param)
+            # if not is_sync:
+            #     average_counter += 1
+            #     if average_param_dict_list is None:
+            #         average_param_dict_list = [{k: v.data(i).copy() for k, v in
+            #                             model.collect_params().items()} for i in ctx]
+            #     else:
+            #         param_dict = model.collect_params()
+            #         alpha = 1. / average_counter
+            #         for i in range(len(ctx)):
+            #             for name, average_param in average_param_dict_list[i].items():
+            #                 average_param[:] += alpha * (param_dict[name].data(ctx[i]) - average_param)
         mx.nd.waitall()
         logging.info('[Epoch {}] time={:.2f}s'.format(epoch_id, time.time()-epoch_start_time))
         if epoch_id >= 5:
@@ -451,7 +454,7 @@ def train():
         model.save_parameters(save_path)
 
     save_path = os.path.join(args.save_dir, 'average.params')
-    mx.nd.save(save_path, average_param_dict)
+    mx.nd.save(save_path, average_param_dict_list[0])
     if args.average_checkpoint:
         for j in range(args.num_averages):
             params = mx.nd.load(os.path.join(args.save_dir,
@@ -464,8 +467,14 @@ def train():
                                  'average_checkpoint_{}.params'.format(args.num_averages))
         model.save_parameters(save_path)
     elif args.average_start > 0:
-        for k, v in model.collect_params().items():
-            v.set_data(average_param_dict[k])
+        # for k, v in model.collect_params().items():
+        #     v.set_data(average_param_dict[k])
+        param_dict = model.collect_params()
+        for i in range(len(ctx)):
+            for name, average_param in average_param_dict_list[i].items():
+                param_dict[name].data(ctx[i])[:] = average_param
+        trainer.allreduce_params()
+        mx.nd.waitall()
         save_path = os.path.join(args.save_dir, 'average.params')
         model.save_parameters(save_path)
     else:

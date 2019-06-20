@@ -411,7 +411,8 @@ class LocalSGDTrainer(object):
                     self._allreduce_states()
                 # indicate that the parameters are synchronized in the current iteration
                 return True
-        return False
+            return False
+        return True
 
 
 
