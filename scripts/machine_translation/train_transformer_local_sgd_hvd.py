@@ -60,6 +60,8 @@ np.random.seed(100)
 random.seed(100)
 mx.random.seed(10000)
 
+os.environ['MXNET_GPU_MEM_POOL_TYPE'] = 'Round'
+
 parser = argparse.ArgumentParser(description='Neural Machine Translation Example.'
                                              'We train the Transformer Model')
 parser.add_argument('--dataset', type=str, default='WMT2016BPE', help='Dataset to use.')
