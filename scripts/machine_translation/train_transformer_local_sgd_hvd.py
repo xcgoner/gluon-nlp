@@ -181,6 +181,9 @@ if args.gpus is not None and args.gpus != '':
     ctx = ctx[(local_rank * ctx_list_size) : min((local_rank+1)*ctx_list_size, len(ctx))]
     num_ctxs = len(ctx)
 
+# debug
+print(ctx)
+
 data_train_lengths, data_val_lengths, data_test_lengths = [dataprocessor.get_data_lengths(x)
                                                            for x in
                                                            [data_train, data_val, data_test]]
