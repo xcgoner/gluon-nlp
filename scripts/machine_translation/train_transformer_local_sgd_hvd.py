@@ -303,11 +303,6 @@ def train():
         local_sgd_schedule = None
     local_sgd = args.local_sgd
 
-    # with mx.Context(ctx[0]):
-    #     hvd.broadcast_parameters(model.collect_params(), root_rank=0)
-    
-    mx.nd.waitall()
-    print('broadcast done')
 
     # if local_sgd_epochs is not None:
     #     trainer = gluon.Trainer(model.collect_params(), args.optimizer,
@@ -341,6 +336,25 @@ def train():
     average_param_dict = None
     model.collect_params().zero_grad()
     parallel = Parallel(num_ctxs, parallel_model)
+
+    # broadcast the initial values
+    for batch_id, seqs \
+            in enumerate(train_data_loader):
+        seqs = [[seq.as_in_context(context) for seq in shard]
+                for context, shard in zip(ctx, seqs)]
+        Ls = []
+        for seq in seqs:
+            parallel.put((seq, args.batch_size))
+        Ls = [parallel.get() for _ in range(len(ctx))]
+        # run a single forward to trigger initialization
+        break
+    model.collect_params().zero_grad()
+    # sync params
+    trainer.broadcast_params()
+    mx.nd.waitall()
+    logging.info('[{}] broadcast done'.format(rank))
+
+
     for epoch_id in range(args.epochs):
         log_avg_loss = 0
         log_wc = 0
@@ -386,9 +400,9 @@ def train():
             log_wc += src_wc + tgt_wc
             if (batch_id + 1) % (args.log_interval * grad_interval) == 0:
                 wps = log_wc / (time.time() - log_start_time)
-                logging.info('[Epoch {} Batch {}/{}] loss={:.4f}, ppl={:.4f}, '
+                logging.info('[{}] [Epoch {} Batch {}/{}] loss={:.4f}, ppl={:.4f}, '
                              'throughput={:.2f}K wps, wc={:.2f}K'
-                             .format(epoch_id, batch_id + 1, len(train_data_loader),
+                             .format(rank, epoch_id, batch_id + 1, len(train_data_loader),
                                      log_avg_loss / args.log_interval,
                                      np.exp(log_avg_loss / args.log_interval),
                                      wps / 1000, log_wc / 1000))
@@ -404,15 +418,15 @@ def train():
                                                     tokenized=tokenized, tokenizer=args.bleu,
                                                     split_compound_word=split_compound_word,
                                                     bpe=bpe)
-        logging.info('[Epoch {}] valid Loss={:.4f}, valid ppl={:.4f}, valid bleu={:.2f}'
-                     .format(epoch_id, valid_loss, np.exp(valid_loss), valid_bleu_score * 100))
+        logging.info('[{}] [Epoch {}] valid Loss={:.4f}, valid ppl={:.4f}, valid bleu={:.2f}'
+                     .format(rank, epoch_id, valid_loss, np.exp(valid_loss), valid_bleu_score * 100))
         test_loss, test_translation_out = evaluate(test_data_loader, ctx[0])
         test_bleu_score, _, _, _, _ = compute_bleu([test_tgt_sentences], test_translation_out,
                                                    tokenized=tokenized, tokenizer=args.bleu,
                                                    split_compound_word=split_compound_word,
                                                    bpe=bpe)
-        logging.info('[Epoch {}] test Loss={:.4f}, test ppl={:.4f}, test bleu={:.2f}'
-                     .format(epoch_id, test_loss, np.exp(test_loss), test_bleu_score * 100))
+        logging.info('[{}] [Epoch {}] test Loss={:.4f}, test ppl={:.4f}, test bleu={:.2f}'
+                     .format(rank, epoch_id, test_loss, np.exp(test_loss), test_bleu_score * 100))
         dataprocessor.write_sentences(valid_translation_out,
                                       os.path.join(args.save_dir,
                                                    'epoch{:d}_valid_out.txt').format(epoch_id))
