@@ -504,6 +504,10 @@ def train():
                 log_start_time = time.time()
                 log_avg_loss = 0
                 log_wc = 0
+
+                # debug
+                if batch_id > 2000:
+                    break
         # sync params
         trainer.allreduce_params()
         trainer.allreduce_states()
