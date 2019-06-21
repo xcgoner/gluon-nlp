@@ -417,7 +417,8 @@ def train():
     mx.nd.waitall()
     logging.info('[{}] broadcast doing'.format(rank))
     # sync params
-    trainer.broadcast_params()
+    # trainer.broadcast_params()
+    broadcast_params(trainer)
     # for i, param in enumerate(list(model.collect_params().values())):
     #     if param.grad_req != 'null':
     #         hvd.broadcast(param.list_data()[0], root_rank=0, name = str(i))
