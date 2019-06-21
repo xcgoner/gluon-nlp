@@ -106,6 +106,7 @@ class HierLocalSGDTrainer(object):
         self._local_sgd_regularization = local_sgd_regularization
         self._local_sgd_regularization_interval = local_sgd_regularization_interval
         self._local_sgd_regularization_counter = 0
+        self._hvd = hvd
 
         self._kvstore_params = {'kvstore': kvstore, 'update_on_kvstore': update_on_kvstore}
         self._kv_initialized = False
@@ -425,9 +426,28 @@ class HierLocalSGDTrainer(object):
         """
         for i, param in enumerate(self._params):
             if param.grad_req != 'null':
-                hvd.allreduce_(param.list_data()[0], average=False, 
+                self._hvd.allreduce_(param.list_data()[0], average=False, 
                                        name=str(i), priority=-i)
-                param.list_data()[0] /= hvd.size()
+                param.list_data()[0] /= self._hvd.size()
+                for j in range(1, len(param.list_data())):
+                    param.list_data()[0].copyto(param.list_data()[j])
+
+    def broadcast_params(self):
+        """For each parameter, reduce the gradients from different contexts.
+
+        Should be called after `autograd.backward()`, outside of `record()` scope,
+        and before `trainer.update()`.
+
+        For normal parameter updates, `step()` should be used, which internally calls
+        `allreduce_grads()` and then `update()`. However, if you need to get the reduced
+        gradients to perform certain transformation, such as in gradient clipping, then
+        you may want to manually call `allreduce_grads()` and `update()` separately.
+        """
+        for i, param in enumerate(self._params):
+            if param.grad_req != 'null':
+                self._hvd.allreduce_(param.list_data()[0], average=False, 
+                                       name=str(i), priority=-i)
+                param.list_data()[0] /= self._hvd.size()
                 for j in range(1, len(param.list_data())):
                     param.list_data()[0].copyto(param.list_data()[j])
 
@@ -443,9 +463,9 @@ class HierLocalSGDTrainer(object):
                             idx = i+len(self._params)*(j+1)
                             if param._stype == 'default':
                                 self._kvstore.pull(idx, state_arrays, priority=i-len(self._params)*2)
-                                hvd.allreduce_(state_arrays[0], average=False, 
+                                self._hvd.allreduce_(state_arrays[0], average=False, 
                                                        name=str(idx), priority=i-len(self._params)*2)
-                                state_arrays[0] /= hvd.size()
+                                state_arrays[0] /= self._hvd.size()
                                 for j in range(1, len(state_arrays)):
                                     state_arrays[0].copyto(state_arrays[j])
                             else:
@@ -455,9 +475,9 @@ class HierLocalSGDTrainer(object):
                         idx = i+len(self._params)
                         if param._stype == 'default':
                             self._kvstore.pull(idx, state_arrays, priority=i-len(self._params)*2)
-                            hvd.allreduce_(state_arrays[0], average=False, 
+                            self._hvd.allreduce_(state_arrays[0], average=False, 
                                                     name=str(idx), priority=i-len(self._params)*2)
-                            state_arrays[0] /= hvd.size()
+                            state_arrays[0] /= self._hvd.size()
                             for j in range(1, len(state_arrays)):
                                 state_arrays[0].copyto(state_arrays[j])
                         else:

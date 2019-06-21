@@ -300,7 +300,8 @@ def train():
         local_sgd_schedule = None
     local_sgd = args.local_sgd
 
-    hvd.broadcast_parameters(model.collect_params(), root_rank=0)
+    with mx.Context(ctx[0]):
+        hvd.broadcast_parameters(model.collect_params(), root_rank=0)
 
     # if local_sgd_epochs is not None:
     #     trainer = gluon.Trainer(model.collect_params(), args.optimizer,
