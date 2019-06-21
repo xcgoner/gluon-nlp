@@ -23,7 +23,7 @@ from mxnet import optimizer as opt
 from mxnet.model import _create_kvstore, _create_sparse_kvstore
 from mxnet.gluon.parameter import ParameterDict, Parameter
 
-from horovod.mxnet as hvd
+import horovod.mxnet as hvd
 
 class HierLocalSGDTrainer(object):
     """Applies an `Optimizer` on a set of Parameters. Trainer should
