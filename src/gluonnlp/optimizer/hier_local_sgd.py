@@ -343,29 +343,29 @@ class HierLocalSGDTrainer(object):
 
         self._allreduce_grads()
 
-        if self._local_sgd > 1 and self._local_sgd_counter == 0 and self._local_sgd_regularization > 0:
-            # regularization for local sgd
-            self._local_sgd_regularization_params = []
-            for i, param in enumerate(self._params):
-                if param.grad_req != 'null' and param._stype == 'default':
-                    self._local_sgd_regularization_params.append([self._local_sgd_regularization * x.copy() for x in param.list_data()])
-                else:
-                    self._local_sgd_regularization_params.append([])
+        # if self._local_sgd > 1 and self._local_sgd_counter == 0 and self._local_sgd_regularization > 0:
+        #     # regularization for local sgd
+        #     self._local_sgd_regularization_params = []
+        #     for i, param in enumerate(self._params):
+        #         if param.grad_req != 'null' and param._stype == 'default':
+        #             self._local_sgd_regularization_params.append([self._local_sgd_regularization * x.copy() for x in param.list_data()])
+        #         else:
+        #             self._local_sgd_regularization_params.append([])
 
         self._update(ignore_stale_grad)
 
-        if self._local_sgd > 1 and self._local_sgd_regularization > 0:
-            # regularization for local sgd
-            # TODO(xcong): use param.name instead of the indices
-            mixing_weight = (1 - self._local_sgd_regularization)
-            self._local_sgd_regularization_counter += 1
-            if self._local_sgd_regularization_interval == 0 or self._local_sgd_regularization_interval == self._local_sgd_regularization_counter:
-                self._local_sgd_regularization_counter = 0
-                for i, param in enumerate(self._params):
-                    if param.grad_req != 'null' and param._stype == 'default':
-                        for j, data in enumerate(param.list_data()):
-                            data *= mixing_weight
-                            data += self._local_sgd_regularization_params[i][j]
+        # if self._local_sgd > 1 and self._local_sgd_regularization > 0:
+        #     # regularization for local sgd
+        #     # TODO(xcong): use param.name instead of the indices
+        #     mixing_weight = (1 - self._local_sgd_regularization)
+        #     self._local_sgd_regularization_counter += 1
+        #     if self._local_sgd_regularization_interval == 0 or self._local_sgd_regularization_interval == self._local_sgd_regularization_counter:
+        #         self._local_sgd_regularization_counter = 0
+        #         for i, param in enumerate(self._params):
+        #             if param.grad_req != 'null' and param._stype == 'default':
+        #                 for j, data in enumerate(param.list_data()):
+        #                     data *= mixing_weight
+        #                     data += self._local_sgd_regularization_params[i][j]
 
         if self._local_sgd > 1:
             # local sgd
