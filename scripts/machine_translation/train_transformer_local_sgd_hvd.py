@@ -303,8 +303,8 @@ def train():
         local_sgd_schedule = None
     local_sgd = args.local_sgd
 
-    with mx.Context(ctx[0]):
-        hvd.broadcast_parameters(model.collect_params(), root_rank=0)
+    # with mx.Context(ctx[0]):
+    #     hvd.broadcast_parameters(model.collect_params(), root_rank=0)
     
     mx.nd.waitall()
     print('broadcast done')
