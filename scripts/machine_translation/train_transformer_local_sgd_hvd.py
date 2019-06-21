@@ -250,11 +250,26 @@ def allreduce_params(trainer):
     """
     for i, param in enumerate(trainer._params):
         if param.grad_req != 'null':
+
+            mx.nd.waitall()
+            logging.info('[{}] before allreduce param {}'.format(rank, i))
+
             hvd.allreduce(param.list_data()[0], average=False, 
                                     name=str(i), priority=-i)
+
+            mx.nd.waitall()
+            logging.info('[{}] after allreduce param {}'.format(rank, i))
+
             param.list_data()[0] /= hvd.size()
+
+            mx.nd.waitall()
+            logging.info('[{}] after average param {}'.format(rank, i))
+
             for j in range(1, len(param.list_data())):
                 param.list_data()[0].copyto(param.list_data()[j])
+            
+            mx.nd.waitall()
+            logging.info('[{}] after copyto param {}'.format(rank, i))
 
 def broadcast_params(trainer):
     """For each parameter, broadcast the parameters to different processes and contexts.
