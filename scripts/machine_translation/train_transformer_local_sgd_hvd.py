@@ -461,7 +461,7 @@ def train():
                 is_sync = trainer.step(float(loss_denom) / args.batch_size / 100.0)
                 if is_sync:
                     allreduce_params(trainer)
-                    allreduce_states(trainer)
+                    # allreduce_states(trainer)
                 param_dict = model.collect_params()
                 param_dict.zero_grad()
                 if step_num > average_start:
