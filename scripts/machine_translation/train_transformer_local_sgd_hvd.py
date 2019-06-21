@@ -432,8 +432,8 @@ def train():
     # mx.nd.waitall()
     # logging.info('[{}] broadcast doing'.format(rank))
     # sync params
-    # trainer.broadcast_params()
-    broadcast_params(trainer)
+    trainer.broadcast_params()
+    # broadcast_params(trainer)
     # mx.nd.waitall()
     # logging.info('[{}] broadcast done'.format(rank))
 
@@ -476,9 +476,9 @@ def train():
                 # mx.nd.waitall()
                 # logging.info('[{}] [batch {}] after step'.format(rank, batch_id))
 
-                if is_sync:
-                    allreduce_params(trainer)
-                    allreduce_states(trainer)
+                # if is_sync:
+                #     allreduce_params(trainer)
+                #     allreduce_states(trainer)
                 param_dict = model.collect_params()
                 param_dict.zero_grad()
                 if step_num > average_start:
@@ -504,10 +504,10 @@ def train():
                 log_avg_loss = 0
                 log_wc = 0
         # sync params
-        # trainer.allreduce_params()
-        # trainer.allreduce_states()
-        allreduce_params(trainer)
-        allreduce_states(trainer)
+        trainer.allreduce_params()
+        trainer.allreduce_states()
+        # allreduce_params(trainer)
+        # allreduce_states(trainer)
         mx.nd.waitall()
 
         logging.info('[{}] [Epoch {}] time={:.2f}s'.format(rank, epoch_id, time.time()-epoch_start_time))
@@ -560,8 +560,8 @@ def train():
         for k, v in model.collect_params().items():
             v.set_data(average_param_dict[k])
         # sync params
-        # trainer.allreduce_params()
-        allreduce_params(trainer)
+        trainer.allreduce_params()
+        # allreduce_params(trainer)
         mx.nd.waitall()
         save_path = os.path.join(args.save_dir, 'average.params')
         model.save_parameters(save_path)
