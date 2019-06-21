@@ -472,7 +472,6 @@ def train():
                 # logging.info('[{}] [batch {}] before step'.format(rank, batch_id))
 
                 is_sync = trainer.step(float(loss_denom) / args.batch_size / 100.0)
-                mx.nd.waitall()
 
                 # mx.nd.waitall()
                 # logging.info('[{}] [batch {}] after step'.format(rank, batch_id))
