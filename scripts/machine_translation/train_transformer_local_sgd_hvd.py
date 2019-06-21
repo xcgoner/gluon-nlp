@@ -237,6 +237,71 @@ parallel_model = ParallelTransformer(model, label_smoothing, loss_function, resc
 detokenizer = nlp.data.SacreMosesDetokenizer()
 
 
+def allreduce_params(trainer):
+    """For each parameter, reduce the parameters from different contexts.
+
+    Should be called after `autograd.backward()`, outside of `record()` scope,
+    and before `trainer.update()`.
+
+    For normal parameter updates, `step()` should be used, which internally calls
+    `allreduce_grads()` and then `update()`. However, if you need to get the reduced
+    gradients to perform certain transformation, such as in gradient clipping, then
+    you may want to manually call `allreduce_grads()` and `update()` separately.
+    """
+    for i, param in enumerate(trainer._params):
+        if param.grad_req != 'null':
+            hvd.allreduce(param.list_data()[0], average=False, 
+                                    name=str(i), priority=-i)
+            param.list_data()[0] /= hvd.size()
+            for j in range(1, len(param.list_data())):
+                param.list_data()[0].copyto(param.list_data()[j])
+
+def broadcast_params(trainer):
+    """For each parameter, broadcast the parameters to different processes and contexts.
+
+    Should be called after `autograd.backward()`, outside of `record()` scope,
+    and before `trainer.update()`.
+
+    For normal parameter updates, `step()` should be used, which internally calls
+    `allreduce_grads()` and then `update()`. However, if you need to get the reduced
+    gradients to perform certain transformation, such as in gradient clipping, then
+    you may want to manually call `allreduce_grads()` and `update()` separately.
+    """
+    for i, param in enumerate(trainer._params):
+        if param.grad_req != 'null':
+            hvd.broadcast(param.list_data()[0], root_rank=0, name = str(i))
+            for j in range(1, len(param.list_data())):
+                param.list_data()[0].copyto(param.list_data()[j])
+
+def allreduce_states(trainer):
+    for i, param in reversed(list(enumerate(trainer._params))):
+        if param.grad_req != 'null':
+            if isinstance(trainer._updaters[0].states[i], (tuple, list)):
+                # for some optimizers, there are multiple states (mean, variance), such as Adam
+                for j in range(len(trainer._updaters[0].states[i])):
+                    state_arrays = [updater.states[i][j] for updater in trainer._updaters]
+                    idx = i+len(trainer._params)*(j+1)
+                    if param._stype == 'default':
+                        hvd.allreduce(state_arrays[0], average=False, 
+                                                name=str(idx), priority=i-len(trainer._params)*2)
+                        state_arrays[0] /= hvd.size()
+                        for j in range(1, len(state_arrays)):
+                            state_arrays[0].copyto(state_arrays[j])
+                    else:
+                        raise ValueError("Cannot pull row_sparse parameters for local SGD")
+            else:
+                state_arrays = [updater.states[i] for updater in trainer._updaters]
+                idx = i+len(trainer._params)
+                if param._stype == 'default':
+                    hvd.allreduce(state_arrays[0], average=False, 
+                                            name=str(idx), priority=i-len(trainer._params)*2)
+                    state_arrays[0] /= hvd.size()
+                    for j in range(1, len(state_arrays)):
+                        state_arrays[0].copyto(state_arrays[j])
+                else:
+                    raise ValueError("Cannot pull row_sparse parameters for local SGD")
+
+
 def evaluate(data_loader, context=ctx[0]):
     """Evaluate given the data loader
 
@@ -391,7 +456,10 @@ def train():
                 if average_param_dict is None:
                     average_param_dict = {k: v.data(ctx[0]).copy() for k, v in
                                           model.collect_params().items()}
-                trainer.step(float(loss_denom) / args.batch_size / 100.0)
+                is_sync = trainer.step(float(loss_denom) / args.batch_size / 100.0)
+                if is_sync:
+                    allreduce_params(trainer)
+                    allreduce_states(trainer)
                 param_dict = model.collect_params()
                 param_dict.zero_grad()
                 if step_num > average_start:
@@ -417,8 +485,10 @@ def train():
                 log_avg_loss = 0
                 log_wc = 0
         # sync params
-        trainer.allreduce_params()
-        trainer.allreduce_states()
+        # trainer.allreduce_params()
+        # trainer.allreduce_states()
+        allreduce_params(trainer)
+        allreduce_states(trainer)
         mx.nd.waitall()
         valid_loss, valid_translation_out = evaluate(val_data_loader, ctx[0])
         valid_bleu_score, _, _, _, _ = compute_bleu([val_tgt_sentences], valid_translation_out,
@@ -464,7 +534,8 @@ def train():
         for k, v in model.collect_params().items():
             v.set_data(average_param_dict[k])
         # sync params
-        trainer.allreduce_params()
+        # trainer.allreduce_params()
+        allreduce_params(trainer)
         mx.nd.waitall()
         save_path = os.path.join(args.save_dir, 'average.params')
         model.save_parameters(save_path)

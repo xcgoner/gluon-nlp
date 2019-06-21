@@ -117,7 +117,6 @@ class HierLocalSGDTrainer(object):
         self._distributed = None
         self._params_to_init = []
         self._reset_kvstore()
-        hvd.init()
 
 
     def _check_contexts(self):
@@ -374,8 +373,8 @@ class HierLocalSGDTrainer(object):
             if self._local_sgd_counter == self._local_sgd:
                 self._local_sgd_counter = 0
                 # synchronization
-                self.allreduce_params()
-                self.allreduce_states()
+                # self.allreduce_params()
+                # self.allreduce_states()
                 # indicate that the parameters are synchronized in the current iteration
                 return True
             return False
@@ -452,29 +451,14 @@ class HierLocalSGDTrainer(object):
                     param.list_data()[0].copyto(param.list_data()[j])
 
     def allreduce_states(self):
-        if self._kvstore:
-            # for i, param in enumerate(self._params):
-            for i, param in reversed(list(enumerate(self._params))):
-                if param.grad_req != 'null':
-                    if isinstance(self._updaters[0].states[i], (tuple, list)):
-                        # for some optimizers, there are multiple states (mean, variance), such as Adam
-                        for j in range(len(self._updaters[0].states[i])):
-                            state_arrays = [updater.states[i][j] for updater in self._updaters]
-                            idx = i+len(self._params)*(j+1)
-                            if param._stype == 'default':
-                                self._kvstore.pull(idx, state_arrays, priority=i-len(self._params)*2)
-                                hvd.allreduce(state_arrays[0], average=False, 
-                                                       name=str(idx), priority=i-len(self._params)*2)
-                                state_arrays[0] /= hvd.size()
-                                for j in range(1, len(state_arrays)):
-                                    state_arrays[0].copyto(state_arrays[j])
-                            else:
-                                raise ValueError("Cannot pull row_sparse parameters for local SGD")
-                    else:
-                        state_arrays = [updater.states[i] for updater in self._updaters]
-                        idx = i+len(self._params)
+        for i, param in reversed(list(enumerate(self._params))):
+            if param.grad_req != 'null':
+                if isinstance(self._updaters[0].states[i], (tuple, list)):
+                    # for some optimizers, there are multiple states (mean, variance), such as Adam
+                    for j in range(len(self._updaters[0].states[i])):
+                        state_arrays = [updater.states[i][j] for updater in self._updaters]
+                        idx = i+len(self._params)*(j+1)
                         if param._stype == 'default':
-                            self._kvstore.pull(idx, state_arrays, priority=i-len(self._params)*2)
                             hvd.allreduce(state_arrays[0], average=False, 
                                                     name=str(idx), priority=i-len(self._params)*2)
                             state_arrays[0] /= hvd.size()
@@ -482,6 +466,17 @@ class HierLocalSGDTrainer(object):
                                 state_arrays[0].copyto(state_arrays[j])
                         else:
                             raise ValueError("Cannot pull row_sparse parameters for local SGD")
+                else:
+                    state_arrays = [updater.states[i] for updater in self._updaters]
+                    idx = i+len(self._params)
+                    if param._stype == 'default':
+                        hvd.allreduce(state_arrays[0], average=False, 
+                                                name=str(idx), priority=i-len(self._params)*2)
+                        state_arrays[0] /= hvd.size()
+                        for j in range(1, len(state_arrays)):
+                            state_arrays[0].copyto(state_arrays[j])
+                    else:
+                        raise ValueError("Cannot pull row_sparse parameters for local SGD")
 
 
     def update(self, batch_size, ignore_stale_grad=False):
