@@ -251,25 +251,25 @@ def allreduce_params(trainer):
     for i, param in enumerate(trainer._params):
         if param.grad_req != 'null':
 
-            mx.nd.waitall()
-            logging.info('[{}] before allreduce param {}'.format(rank, i))
+            # mx.nd.waitall()
+            # logging.info('[{}] before allreduce param {}'.format(rank, i))
 
             hvd.allreduce(param.list_data()[0], average=False, 
                                     name=str(i), priority=-i)
 
-            mx.nd.waitall()
-            logging.info('[{}] after allreduce param {}'.format(rank, i))
+            # mx.nd.waitall()
+            # logging.info('[{}] after allreduce param {}'.format(rank, i))
 
             param.list_data()[0] /= hvd.size()
 
-            mx.nd.waitall()
-            logging.info('[{}] after average param {}'.format(rank, i))
+            # mx.nd.waitall()
+            # logging.info('[{}] after average param {}'.format(rank, i))
 
             for j in range(1, len(param.list_data())):
                 param.list_data()[0].copyto(param.list_data()[j])
             
-            mx.nd.waitall()
-            logging.info('[{}] after copyto param {}'.format(rank, i))
+            # mx.nd.waitall()
+            # logging.info('[{}] after copyto param {}'.format(rank, i))
 
 def broadcast_params(trainer):
     """For each parameter, broadcast the parameters to different processes and contexts.
@@ -429,18 +429,13 @@ def train():
         # run a single forward to trigger initialization
         break
     model.collect_params().zero_grad()
-    mx.nd.waitall()
-    logging.info('[{}] broadcast doing'.format(rank))
+    # mx.nd.waitall()
+    # logging.info('[{}] broadcast doing'.format(rank))
     # sync params
     # trainer.broadcast_params()
     broadcast_params(trainer)
-    # for i, param in enumerate(list(model.collect_params().values())):
-    #     if param.grad_req != 'null':
-    #         hvd.broadcast(param.list_data()[0], root_rank=0, name = str(i))
-    #         # for j in range(1, len(param.list_data())):
-    #         #     param.list_data()[0].copyto(param.list_data()[j])
-    mx.nd.waitall()
-    logging.info('[{}] broadcast done'.format(rank))
+    # mx.nd.waitall()
+    # logging.info('[{}] broadcast done'.format(rank))
 
 
     for epoch_id in range(args.epochs):
@@ -473,17 +468,17 @@ def train():
                 if average_param_dict is None:
                     average_param_dict = {k: v.data(ctx[0]).copy() for k, v in
                                           model.collect_params().items()}
-                mx.nd.waitall()
-                logging.info('[{}] [batch {}] before step'.format(rank, batch_id))
+                # mx.nd.waitall()
+                # logging.info('[{}] [batch {}] before step'.format(rank, batch_id))
 
                 is_sync = trainer.step(float(loss_denom) / args.batch_size / 100.0)
 
-                mx.nd.waitall()
-                logging.info('[{}] [batch {}] after step'.format(rank, batch_id))
+                # mx.nd.waitall()
+                # logging.info('[{}] [batch {}] after step'.format(rank, batch_id))
 
                 if is_sync:
                     allreduce_params(trainer)
-                    # allreduce_states(trainer)
+                    allreduce_states(trainer)
                 param_dict = model.collect_params()
                 param_dict.zero_grad()
                 if step_num > average_start:
