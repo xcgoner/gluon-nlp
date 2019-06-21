@@ -376,6 +376,7 @@ class HierLocalSGDTrainer(object):
                 # self.allreduce_params()
                 # self.allreduce_states()
                 # indicate that the parameters are synchronized in the current iteration
+                print('before sync')
                 return True
             return False
         return True
