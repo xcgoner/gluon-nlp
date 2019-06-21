@@ -104,9 +104,6 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx):
     """Training function."""
     hvd.broadcast_parameters(model.collect_params(), root_rank=0)
 
-    mx.nd.waitall()
-    print('broadcast done')
-
     mlm_metric = nlp.metric.MaskedAccuracy()
     nsp_metric = nlp.metric.MaskedAccuracy()
     mlm_metric.reset()
