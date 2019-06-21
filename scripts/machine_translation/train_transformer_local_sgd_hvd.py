@@ -349,6 +349,7 @@ def train():
         # run a single forward to trigger initialization
         break
     model.collect_params().zero_grad()
+    mx.nd.waitall()
     # sync params
     trainer.broadcast_params()
     mx.nd.waitall()
