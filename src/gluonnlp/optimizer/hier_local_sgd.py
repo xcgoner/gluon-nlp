@@ -368,7 +368,7 @@ class HierLocalSGDTrainer(object):
         #                     data += self._local_sgd_regularization_params[i][j]
 
         if self._local_sgd > 1:
-            print('after sync')
+            print('after update')
             # local sgd
             self._local_sgd_counter += 1
             if self._local_sgd_counter == self._local_sgd:
