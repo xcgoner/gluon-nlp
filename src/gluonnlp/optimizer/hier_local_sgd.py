@@ -117,6 +117,7 @@ class HierLocalSGDTrainer(object):
         self._distributed = None
         self._params_to_init = []
         self._reset_kvstore()
+        hvd.init()
 
 
     def _check_contexts(self):
