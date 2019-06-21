@@ -511,40 +511,42 @@ def train():
         mx.nd.waitall()
 
         logging.info('[{}] [Epoch {}] time={:.2f}s'.format(rank, epoch_id, time.time()-epoch_start_time))
-        if epoch_id >= 5:
-            valid_loss, valid_translation_out = evaluate(val_data_loader, ctx[0])
-            valid_bleu_score, _, _, _, _ = compute_bleu([val_tgt_sentences], valid_translation_out,
+        if rank == 0:
+            if epoch_id >= 5:
+                valid_loss, valid_translation_out = evaluate(val_data_loader, ctx[0])
+                valid_bleu_score, _, _, _, _ = compute_bleu([val_tgt_sentences], valid_translation_out,
+                                                            tokenized=tokenized, tokenizer=args.bleu,
+                                                            split_compound_word=split_compound_word,
+                                                            bpe=bpe)
+                logging.info('[{}] [Epoch {}] valid Loss={:.4f}, valid ppl={:.4f}, valid bleu={:.2f}'
+                            .format(rank, epoch_id, valid_loss, np.exp(valid_loss), valid_bleu_score * 100))
+                test_loss, test_translation_out = evaluate(test_data_loader, ctx[0])
+                test_bleu_score, _, _, _, _ = compute_bleu([test_tgt_sentences], test_translation_out,
                                                         tokenized=tokenized, tokenizer=args.bleu,
                                                         split_compound_word=split_compound_word,
                                                         bpe=bpe)
-            logging.info('[{}] [Epoch {}] valid Loss={:.4f}, valid ppl={:.4f}, valid bleu={:.2f}'
-                        .format(rank, epoch_id, valid_loss, np.exp(valid_loss), valid_bleu_score * 100))
-            test_loss, test_translation_out = evaluate(test_data_loader, ctx[0])
-            test_bleu_score, _, _, _, _ = compute_bleu([test_tgt_sentences], test_translation_out,
-                                                    tokenized=tokenized, tokenizer=args.bleu,
-                                                    split_compound_word=split_compound_word,
-                                                    bpe=bpe)
-            logging.info('[{}] [Epoch {}] test Loss={:.4f}, test ppl={:.4f}, test bleu={:.2f}'
-                        .format(rank, epoch_id, test_loss, np.exp(test_loss), test_bleu_score * 100))
-            dataprocessor.write_sentences(valid_translation_out,
-                                        os.path.join(args.save_dir,
-                                                    'epoch{:d}_valid_out.txt').format(epoch_id))
-            dataprocessor.write_sentences(test_translation_out,
-                                        os.path.join(args.save_dir,
-                                                    'epoch{:d}_test_out.txt').format(epoch_id))
-            if valid_bleu_score > best_valid_bleu:
-                best_valid_bleu = valid_bleu_score
+                logging.info('[{}] [Epoch {}] test Loss={:.4f}, test ppl={:.4f}, test bleu={:.2f}'
+                            .format(rank, epoch_id, test_loss, np.exp(test_loss), test_bleu_score * 100))
+                dataprocessor.write_sentences(valid_translation_out,
+                                            os.path.join(args.save_dir,
+                                                        'epoch{:d}_valid_out.txt').format(epoch_id))
+                dataprocessor.write_sentences(test_translation_out,
+                                            os.path.join(args.save_dir,
+                                                        'epoch{:d}_test_out.txt').format(epoch_id))
+                if valid_bleu_score > best_valid_bleu:
+                    best_valid_bleu = valid_bleu_score
+                    save_path = os.path.join(args.save_dir, 'valid_best.params')
+                    logging.info('Save best parameters to {}'.format(save_path))
+                    model.save_parameters(save_path)
+            else:
                 save_path = os.path.join(args.save_dir, 'valid_best.params')
                 logging.info('Save best parameters to {}'.format(save_path))
                 model.save_parameters(save_path)
-        else:
-            save_path = os.path.join(args.save_dir, 'valid_best.params')
-            logging.info('Save best parameters to {}'.format(save_path))
+            save_path = os.path.join(args.save_dir, 'epoch{:d}.params'.format(epoch_id))
             model.save_parameters(save_path)
-        save_path = os.path.join(args.save_dir, 'epoch{:d}.params'.format(epoch_id))
-        model.save_parameters(save_path)
-    save_path = os.path.join(args.save_dir, 'average.params')
-    mx.nd.save(save_path, average_param_dict)
+    if rank == 0:
+        save_path = os.path.join(args.save_dir, 'average.params')
+        mx.nd.save(save_path, average_param_dict)
     if args.average_checkpoint:
         for j in range(args.num_averages):
             params = mx.nd.load(os.path.join(args.save_dir,
@@ -553,9 +555,10 @@ def train():
             for k, v in model._collect_params_with_prefix().items():
                 for c in ctx:
                     v.data(c)[:] += alpha * (params[k].as_in_context(c) - v.data(c))
-        save_path = os.path.join(args.save_dir,
-                                 'average_checkpoint_{}.params'.format(args.num_averages))
-        model.save_parameters(save_path)
+        if rank == 0:
+            save_path = os.path.join(args.save_dir,
+                                    'average_checkpoint_{}.params'.format(args.num_averages))
+            model.save_parameters(save_path)
     elif args.average_start > 0:
         for k, v in model.collect_params().items():
             v.set_data(average_param_dict[k])
@@ -563,26 +566,28 @@ def train():
         trainer.allreduce_params()
         # allreduce_params(trainer)
         mx.nd.waitall()
-        save_path = os.path.join(args.save_dir, 'average.params')
-        model.save_parameters(save_path)
+        if rank == 0:
+            save_path = os.path.join(args.save_dir, 'average.params')
+            model.save_parameters(save_path)
     else:
         model.load_parameters(os.path.join(args.save_dir, 'valid_best.params'), ctx)
-    valid_loss, valid_translation_out = evaluate(val_data_loader, ctx[0])
-    valid_bleu_score, _, _, _, _ = compute_bleu([val_tgt_sentences], valid_translation_out,
+    if rank == 0:
+        valid_loss, valid_translation_out = evaluate(val_data_loader, ctx[0])
+        valid_bleu_score, _, _, _, _ = compute_bleu([val_tgt_sentences], valid_translation_out,
+                                                    tokenized=tokenized, tokenizer=args.bleu, bpe=bpe,
+                                                    split_compound_word=split_compound_word)
+        logging.info('Best model valid Loss={:.4f}, valid ppl={:.4f}, valid bleu={:.2f}'
+                    .format(valid_loss, np.exp(valid_loss), valid_bleu_score * 100))
+        test_loss, test_translation_out = evaluate(test_data_loader, ctx[0])
+        test_bleu_score, _, _, _, _ = compute_bleu([test_tgt_sentences], test_translation_out,
                                                 tokenized=tokenized, tokenizer=args.bleu, bpe=bpe,
                                                 split_compound_word=split_compound_word)
-    logging.info('Best model valid Loss={:.4f}, valid ppl={:.4f}, valid bleu={:.2f}'
-                 .format(valid_loss, np.exp(valid_loss), valid_bleu_score * 100))
-    test_loss, test_translation_out = evaluate(test_data_loader, ctx[0])
-    test_bleu_score, _, _, _, _ = compute_bleu([test_tgt_sentences], test_translation_out,
-                                               tokenized=tokenized, tokenizer=args.bleu, bpe=bpe,
-                                               split_compound_word=split_compound_word)
-    logging.info('Best model test Loss={:.4f}, test ppl={:.4f}, test bleu={:.2f}'
-                 .format(test_loss, np.exp(test_loss), test_bleu_score * 100))
-    dataprocessor.write_sentences(valid_translation_out,
-                                  os.path.join(args.save_dir, 'best_valid_out.txt'))
-    dataprocessor.write_sentences(test_translation_out,
-                                  os.path.join(args.save_dir, 'best_test_out.txt'))
+        logging.info('Best model test Loss={:.4f}, test ppl={:.4f}, test bleu={:.2f}'
+                    .format(test_loss, np.exp(test_loss), test_bleu_score * 100))
+        dataprocessor.write_sentences(valid_translation_out,
+                                    os.path.join(args.save_dir, 'best_valid_out.txt'))
+        dataprocessor.write_sentences(test_translation_out,
+                                    os.path.join(args.save_dir, 'best_test_out.txt'))
 
 
 if __name__ == '__main__':
