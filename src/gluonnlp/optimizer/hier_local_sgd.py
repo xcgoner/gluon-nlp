@@ -23,6 +23,10 @@ from mxnet import optimizer as opt
 from mxnet.model import _create_kvstore, _create_sparse_kvstore
 from mxnet.gluon.parameter import ParameterDict, Parameter
 
+from horovod.mxnet.mpi_ops import broadcast as hvd_broadcast
+from horovod.mxnet.mpi_ops import allreduce as hvd_allreduce
+from horovod.mxnet.mpi_ops import size as hvd_size
+
 class HierLocalSGDTrainer(object):
     """Applies an `Optimizer` on a set of Parameters. Trainer should
     be used together with `autograd`.
@@ -64,7 +68,7 @@ class HierLocalSGDTrainer(object):
         The current learning rate of the optimizer. Given an Optimizer object
         optimizer, its learning rate can be accessed as optimizer.learning_rate.
     """
-    def __init__(self, params, optimizer, hvd, optimizer_params=None, kvstore='device',
+    def __init__(self, params, optimizer, optimizer_params=None, kvstore='device',
                  compression_params=None, update_on_kvstore=None, local_sgd=None, local_sgd_regularization=0, local_sgd_regularization_interval=0):
         if isinstance(params, (dict, ParameterDict)):
             params = list(params.values())
@@ -106,7 +110,6 @@ class HierLocalSGDTrainer(object):
         self._local_sgd_regularization = local_sgd_regularization
         self._local_sgd_regularization_interval = local_sgd_regularization_interval
         self._local_sgd_regularization_counter = 0
-        self._hvd = hvd
 
         self._kvstore_params = {'kvstore': kvstore, 'update_on_kvstore': update_on_kvstore}
         self._kv_initialized = False
@@ -426,9 +429,9 @@ class HierLocalSGDTrainer(object):
         """
         for i, param in enumerate(self._params):
             if param.grad_req != 'null':
-                self._hvd.allreduce(param.list_data()[0], average=False, 
+                hvd_allreduce(param.list_data()[0], average=False, 
                                        name=str(i), priority=-i)
-                param.list_data()[0] /= self._hvd.size()
+                param.list_data()[0] /= hvd_size()
                 for j in range(1, len(param.list_data())):
                     param.list_data()[0].copyto(param.list_data()[j])
 
@@ -445,7 +448,7 @@ class HierLocalSGDTrainer(object):
         """
         for i, param in enumerate(self._params):
             if param.grad_req != 'null':
-                self._hvd.broadcast(param.list_data()[0], root_rank=0, name = str(i))
+                hvd_broadcast(param.list_data()[0], root_rank=0, name = str(i))
                 for j in range(1, len(param.list_data())):
                     param.list_data()[0].copyto(param.list_data()[j])
 
@@ -461,9 +464,9 @@ class HierLocalSGDTrainer(object):
                             idx = i+len(self._params)*(j+1)
                             if param._stype == 'default':
                                 self._kvstore.pull(idx, state_arrays, priority=i-len(self._params)*2)
-                                self._hvd.allreduce(state_arrays[0], average=False, 
+                                hvd_allreduce(state_arrays[0], average=False, 
                                                        name=str(idx), priority=i-len(self._params)*2)
-                                state_arrays[0] /= self._hvd.size()
+                                state_arrays[0] /= hvd_size()
                                 for j in range(1, len(state_arrays)):
                                     state_arrays[0].copyto(state_arrays[j])
                             else:
@@ -473,9 +476,9 @@ class HierLocalSGDTrainer(object):
                         idx = i+len(self._params)
                         if param._stype == 'default':
                             self._kvstore.pull(idx, state_arrays, priority=i-len(self._params)*2)
-                            self._hvd.allreduce(state_arrays[0], average=False, 
+                            hvd_allreduce(state_arrays[0], average=False, 
                                                     name=str(idx), priority=i-len(self._params)*2)
-                            state_arrays[0] /= self._hvd.size()
+                            state_arrays[0] /= hvd_size()
                             for j in range(1, len(state_arrays)):
                                 state_arrays[0].copyto(state_arrays[j])
                         else:

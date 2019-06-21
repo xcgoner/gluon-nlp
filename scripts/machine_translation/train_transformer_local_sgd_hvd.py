@@ -309,7 +309,7 @@ def train():
     #                         {'learning_rate': args.lr, 'beta2': 0.98, 'epsilon': 1e-9}, update_on_kvstore=False, local_sgd=2, local_sgd_regularization=args.local_sgd_regularization, local_sgd_regularization_interval=args.local_sgd_regularization_interval)
     #     trainer._local_sgd = local_sgd
     # else:
-    trainer = HierLocalSGDTrainer(model.collect_params(), args.optimizer, hvd,
+    trainer = HierLocalSGDTrainer(model.collect_params(), args.optimizer, 
                             {'learning_rate': args.lr, 'beta2': 0.98, 'epsilon': 1e-9}, update_on_kvstore=False, local_sgd=local_sgd, local_sgd_regularization=args.local_sgd_regularization, local_sgd_regularization_interval=args.local_sgd_regularization_interval)
 
     train_data_loader, val_data_loader, test_data_loader \
