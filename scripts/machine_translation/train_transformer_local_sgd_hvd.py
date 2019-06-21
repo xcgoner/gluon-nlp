@@ -474,13 +474,13 @@ def train():
                     average_param_dict = {k: v.data(ctx[0]).copy() for k, v in
                                           model.collect_params().items()}
                 mx.nd.waitall()
-                logging.info('[{}] [Epoch {}] before step'.format(rank, epoch_id))
+                logging.info('[{}] [batch {}] before step'.format(rank, batch_id))
 
                 is_sync = trainer.step(float(loss_denom) / args.batch_size / 100.0)
 
                 mx.nd.waitall()
-                logging.info('[{}] [Epoch {}] after step'.format(rank, epoch_id))
-                
+                logging.info('[{}] [batch {}] after step'.format(rank, batch_id))
+
                 if is_sync:
                     allreduce_params(trainer)
                     # allreduce_states(trainer)
