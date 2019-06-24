@@ -19,7 +19,7 @@
 """BERT models."""
 
 __all__ = ['BERTModel', 'BERTEncoder', 'BERTEncoderCell', 'BERTPositionwiseFFN',
-           'BERTLayerNorm', 'bert_12_768_12', 'bert_24_1024_16', 'get_bert_model']
+           'BERTLayerNorm', 'bert_6_768_3', 'bert_6_768_12', 'bert_12_768_12', 'bert_24_1024_16', 'get_bert_model']
 
 import os
 import warnings
