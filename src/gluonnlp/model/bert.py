@@ -492,6 +492,38 @@ model_store._model_sha1.update(
         ('24551e1446180e045019a87fc4ffbf714d99c0b5', 'bert_24_1024_16_book_corpus_wiki_en_uncased')
     ]})
 
+bert_6_768_3_hparams = {
+    'attention_cell': 'multi_head',
+    'num_layers': 6,
+    'units': 768,
+    'hidden_size': 3072,
+    'max_length': 512,
+    'num_heads': 3,
+    'scaled': True,
+    'dropout': 0.1,
+    'use_residual': True,
+    'embed_size': 768,
+    'embed_dropout': 0.1,
+    'token_type_vocab_size': 2,
+    'word_embed': None,
+}
+
+bert_6_768_12_hparams = {
+    'attention_cell': 'multi_head',
+    'num_layers': 6,
+    'units': 768,
+    'hidden_size': 3072,
+    'max_length': 512,
+    'num_heads': 12,
+    'scaled': True,
+    'dropout': 0.1,
+    'use_residual': True,
+    'embed_size': 768,
+    'embed_dropout': 0.1,
+    'token_type_vocab_size': 2,
+    'word_embed': None,
+}
+
 bert_12_768_12_hparams = {
     'attention_cell': 'multi_head',
     'num_layers': 12,
@@ -525,10 +557,91 @@ bert_24_1024_16_hparams = {
 }
 
 bert_hparams = {
+    'bert_6_768_3': bert_12_768_12_hparams,
+    'bert_6_768_12': bert_12_768_12_hparams,
     'bert_12_768_12': bert_12_768_12_hparams,
     'bert_24_1024_16': bert_24_1024_16_hparams,
 }
 
+def bert_6_768_3(dataset_name=None, vocab=None, pretrained=True, ctx=mx.cpu(),
+                   root=os.path.join(get_home_dir(), 'models'), use_pooler=True,
+                   use_decoder=True, use_classifier=True, **kwargs):
+    """Generic BERT SMALL model.
+
+    The number of layers (L) is 6, number of units (H) is 768, and the
+    number of self-attention heads (A) is 3.
+
+    Parameters
+    ----------
+    dataset_name : str or None, default None
+        Options include 'book_corpus_wiki_en_cased', 'book_corpus_wiki_en_uncased',
+        'wiki_cn_cased', 'wiki_multilingual_uncased' and 'wiki_multilingual_cased'.
+    vocab : gluonnlp.vocab.BERTVocab or None, default None
+        Vocabulary for the dataset. Must be provided if dataset is not specified.
+    pretrained : bool, default True
+        Whether to load the pretrained weights for model.
+    ctx : Context, default CPU
+        The context in which to load the pretrained weights.
+    root : str, default '$MXNET_HOME/models'
+        Location for keeping the model parameters.
+        MXNET_HOME defaults to '~/.mxnet'.
+    use_pooler : bool, default True
+        Whether to include the pooler which converts the encoded sequence tensor of shape
+        (batch_size, seq_length, units) to a tensor of shape (batch_size, units)
+        for for segment level classification task.
+    use_decoder : bool, default True
+        Whether to include the decoder for masked language model prediction.
+    use_classifier : bool, default True
+        Whether to include the classifier for next sentence classification.
+
+    Returns
+    -------
+    BERTModel, gluonnlp.vocab.BERTVocab
+    """
+    return get_bert_model(model_name='bert_6_768_3', vocab=vocab,
+                          dataset_name=dataset_name, pretrained=pretrained, ctx=ctx,
+                          use_pooler=use_pooler, use_decoder=use_decoder,
+                          use_classifier=use_classifier, root=root, **kwargs)
+
+def bert_6_768_12(dataset_name=None, vocab=None, pretrained=True, ctx=mx.cpu(),
+                   root=os.path.join(get_home_dir(), 'models'), use_pooler=True,
+                   use_decoder=True, use_classifier=True, **kwargs):
+    """Generic BERT SMALL model.
+
+    The number of layers (L) is 6, number of units (H) is 768, and the
+    number of self-attention heads (A) is 12.
+
+    Parameters
+    ----------
+    dataset_name : str or None, default None
+        Options include 'book_corpus_wiki_en_cased', 'book_corpus_wiki_en_uncased',
+        'wiki_cn_cased', 'wiki_multilingual_uncased' and 'wiki_multilingual_cased'.
+    vocab : gluonnlp.vocab.BERTVocab or None, default None
+        Vocabulary for the dataset. Must be provided if dataset is not specified.
+    pretrained : bool, default True
+        Whether to load the pretrained weights for model.
+    ctx : Context, default CPU
+        The context in which to load the pretrained weights.
+    root : str, default '$MXNET_HOME/models'
+        Location for keeping the model parameters.
+        MXNET_HOME defaults to '~/.mxnet'.
+    use_pooler : bool, default True
+        Whether to include the pooler which converts the encoded sequence tensor of shape
+        (batch_size, seq_length, units) to a tensor of shape (batch_size, units)
+        for for segment level classification task.
+    use_decoder : bool, default True
+        Whether to include the decoder for masked language model prediction.
+    use_classifier : bool, default True
+        Whether to include the classifier for next sentence classification.
+
+    Returns
+    -------
+    BERTModel, gluonnlp.vocab.BERTVocab
+    """
+    return get_bert_model(model_name='bert_6_768_12', vocab=vocab,
+                          dataset_name=dataset_name, pretrained=pretrained, ctx=ctx,
+                          use_pooler=use_pooler, use_decoder=use_decoder,
+                          use_classifier=use_classifier, root=root, **kwargs)
 
 def bert_12_768_12(dataset_name=None, vocab=None, pretrained=True, ctx=mx.cpu(),
                    root=os.path.join(get_home_dir(), 'models'), use_pooler=True,
