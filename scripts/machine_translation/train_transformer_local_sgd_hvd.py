@@ -424,7 +424,7 @@ def train():
                 log_wc = 0
 
                 # debug
-                if batch_id > 200:
+                if batch_id > 2000:
                     break
         # sync params
         # mx.nd.waitall()
