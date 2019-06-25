@@ -236,87 +236,6 @@ rescale_loss = 100
 parallel_model = ParallelTransformer(model, label_smoothing, loss_function, rescale_loss)
 detokenizer = nlp.data.SacreMosesDetokenizer()
 
-
-def allreduce_params(trainer):
-    """For each parameter, reduce the parameters from different contexts.
-
-    Should be called after `autograd.backward()`, outside of `record()` scope,
-    and before `trainer.update()`.
-
-    For normal parameter updates, `step()` should be used, which internally calls
-    `allreduce_grads()` and then `update()`. However, if you need to get the reduced
-    gradients to perform certain transformation, such as in gradient clipping, then
-    you may want to manually call `allreduce_grads()` and `update()` separately.
-    """
-    for i, param in enumerate(trainer._params):
-        if param.grad_req != 'null':
-
-            # mx.nd.waitall()
-            # logging.info('[{}] before allreduce param {}'.format(rank, i))
-
-            hvd.allreduce(param.list_data()[0], average=False, 
-                                    name=str(i), priority=-i)
-
-            # mx.nd.waitall()
-            # logging.info('[{}] after allreduce param {}'.format(rank, i))
-
-            param.list_data()[0] /= hvd.size()
-
-            # mx.nd.waitall()
-            # logging.info('[{}] after average param {}'.format(rank, i))
-
-            for j in range(1, len(param.list_data())):
-                param.list_data()[0].copyto(param.list_data()[j])
-            
-            # mx.nd.waitall()
-            # logging.info('[{}] after copyto param {}'.format(rank, i))
-
-def broadcast_params(trainer):
-    """For each parameter, broadcast the parameters to different processes and contexts.
-
-    Should be called after `autograd.backward()`, outside of `record()` scope,
-    and before `trainer.update()`.
-
-    For normal parameter updates, `step()` should be used, which internally calls
-    `allreduce_grads()` and then `update()`. However, if you need to get the reduced
-    gradients to perform certain transformation, such as in gradient clipping, then
-    you may want to manually call `allreduce_grads()` and `update()` separately.
-    """
-    for i, param in enumerate(trainer._params):
-        if param.grad_req != 'null':
-            hvd.broadcast(param.list_data()[0], root_rank=0, name = str(i))
-            for j in range(1, len(param.list_data())):
-                param.list_data()[0].copyto(param.list_data()[j])
-
-def allreduce_states(trainer):
-    for i, param in reversed(list(enumerate(trainer._params))):
-        if param.grad_req != 'null':
-            if isinstance(trainer._updaters[0].states[i], (tuple, list)):
-                # for some optimizers, there are multiple states (mean, variance), such as Adam
-                for j in range(len(trainer._updaters[0].states[i])):
-                    state_arrays = [updater.states[i][j] for updater in trainer._updaters]
-                    idx = i+len(trainer._params)*(j+1)
-                    if param._stype == 'default':
-                        hvd.allreduce(state_arrays[0], average=False, 
-                                                name=str(idx), priority=i-len(trainer._params)*2)
-                        state_arrays[0] /= hvd.size()
-                        for j in range(1, len(state_arrays)):
-                            state_arrays[0].copyto(state_arrays[j])
-                    else:
-                        raise ValueError("Cannot pull row_sparse parameters for local SGD")
-            else:
-                state_arrays = [updater.states[i] for updater in trainer._updaters]
-                idx = i+len(trainer._params)
-                if param._stype == 'default':
-                    hvd.allreduce(state_arrays[0], average=False, 
-                                            name=str(idx), priority=i-len(trainer._params)*2)
-                    state_arrays[0] /= hvd.size()
-                    for j in range(1, len(state_arrays)):
-                        state_arrays[0].copyto(state_arrays[j])
-                else:
-                    raise ValueError("Cannot pull row_sparse parameters for local SGD")
-
-
 def evaluate(data_loader, context=ctx[0]):
     """Evaluate given the data loader
 
@@ -505,12 +424,12 @@ def train():
                 log_wc = 0
 
                 # debug
-                # if batch_id > 2000:
-                #     break
+                if batch_id > 200:
+                    break
         # sync params
-        mx.nd.waitall()
+        # mx.nd.waitall()
         trainer.allreduce_params()
-        trainer.allreduce_states()
+        # trainer.allreduce_states()
         # allreduce_params(trainer)
         # allreduce_states(trainer)
         mx.nd.waitall()
