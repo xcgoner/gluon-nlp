@@ -423,9 +423,9 @@ def train():
                 log_avg_loss = 0
                 log_wc = 0
 
-                # debug
-                if batch_id > 2000:
-                    break
+                # # debug
+                # if batch_id > 2000:
+                #     break
         # sync params
         # mx.nd.waitall()
         trainer.allreduce_params()
