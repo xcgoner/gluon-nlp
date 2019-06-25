@@ -429,7 +429,7 @@ def train():
         # sync params
         # mx.nd.waitall()
         trainer.allreduce_params()
-        # trainer.allreduce_states()
+        trainer.allreduce_states()
         # allreduce_params(trainer)
         # allreduce_states(trainer)
         mx.nd.waitall()
