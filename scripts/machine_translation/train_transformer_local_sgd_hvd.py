@@ -426,7 +426,7 @@ def train():
                 # debug
                 if batch_id > 200:
                     if rank == 0:
-                        time.sleep(200)
+                        time.sleep(0.5)
                     break
         # sync params
         # mx.nd.waitall()
