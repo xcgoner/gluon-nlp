@@ -421,8 +421,7 @@ def train():
                                      wps / 1000, log_wc / 1000))
                 # for h in logging.handlers:
                 #     h.flush()
-                print(len(logging.handlers), flush=True)
-                logging.handlers[0].flush()
+                logging.StreamHandler().flush()
                 log_start_time = time.time()
                 log_avg_loss = 0
                 log_wc = 0
