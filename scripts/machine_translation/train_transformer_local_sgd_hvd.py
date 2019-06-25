@@ -412,6 +412,7 @@ def train():
                 step_loss = 0
             log_wc += src_wc + tgt_wc
             if (batch_id + 1) % (args.log_interval * grad_interval) == 0:
+                mx.nd.waitall()
                 wps = log_wc / (time.time() - log_start_time)
                 logging.info('[{}] [Epoch {} Batch {}/{}] loss={:.4f}, ppl={:.4f}, '
                              'throughput={:.2f}K wps, wc={:.2f}K'
