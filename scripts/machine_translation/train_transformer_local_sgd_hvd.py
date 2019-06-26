@@ -58,6 +58,10 @@ from gluonnlp.optimizer.hier_local_sgd import HierLocalSGDTrainer
 
 os.environ['MXNET_GPU_MEM_POOL_TYPE'] = 'Round'
 
+np.random.seed(100)
+random.seed(100)
+mx.random.seed(10000)
+
 parser = argparse.ArgumentParser(description='Neural Machine Translation Example.'
                                              'We train the Transformer Model')
 parser.add_argument('--dataset', type=str, default='WMT2016BPE', help='Dataset to use.')
@@ -173,9 +177,9 @@ rank = hvd.rank()
 local_rank = hvd.local_rank()
 is_master_node = rank == local_rank
 
-np.random.seed(100 + 10 * rank)
-random.seed(100 + 10 * rank)
-mx.random.seed(10000 + 100 * rank)
+# np.random.seed(100 + 10 * rank)
+# random.seed(100 + 10 * rank)
+# mx.random.seed(10000 + 100 * rank)
 
 if args.gpus is not None and args.gpus != '':
     ctx_list_size = int(math.ceil(len(ctx) / float(num_local_workers)))
@@ -365,8 +369,13 @@ def train():
         step_loss = 0
         log_start_time = time.time()
         epoch_start_time = time.time()
-        for batch_id, seqs \
+        # for batch_id, seqs \
+        #         in enumerate(train_data_loader):
+        batch_id = 0
+        for global_batch_id, seqs \
                 in enumerate(train_data_loader):
+            if global_batch_id % num_workers != rank:
+                continue
             if batch_id % grad_interval == 0:
                 step_num += 1
                 new_lr = args.lr / math.sqrt(args.num_units) \
@@ -413,7 +422,7 @@ def train():
                 step_loss = 0
             log_wc += src_wc + tgt_wc
             if (batch_id + 1) % (args.log_interval * grad_interval) == 0:
-                # mx.nd.waitall()
+                mx.nd.waitall()
                 wps = log_wc / (time.time() - log_start_time)
                 logging.info('[{}] [Epoch {} Batch {}/{}] loss={:.4f}, ppl={:.4f}, '
                              'throughput={:.2f}K wps, wc={:.2f}K'
@@ -428,19 +437,20 @@ def train():
                 log_avg_loss = 0
                 log_wc = 0
 
-                if batch_id > float(len(train_data_loader)) / hvd.size():
-                    break
+                # if batch_id > float(len(train_data_loader)) / hvd.size():
+                #     break
 
                 # # debug
                 # if batch_id > 2000:
                 #     break
+            batch_id += 1
         # sync params
         # mx.nd.waitall()
         trainer.allreduce_params()
         trainer.allreduce_states()
         # allreduce_params(trainer)
         # allreduce_states(trainer)
-        # mx.nd.waitall()
+        mx.nd.waitall()
 
         logging.info('[{}] [Epoch {}] time={:.2f}s'.format(rank, epoch_id, time.time()-epoch_start_time))
         if epoch_id >= args.start_eval:
@@ -478,7 +488,7 @@ def train():
         if rank == 0:
             save_path = os.path.join(args.save_dir, 'epoch{:d}.params'.format(epoch_id))
             model.save_parameters(save_path)
-        # mx.nd.waitall()
+        mx.nd.waitall()
         logging.info('[{}] [Epoch {}] finished'.format(rank, epoch_id))
         logging.StreamHandler().flush()
     if rank == 0:
