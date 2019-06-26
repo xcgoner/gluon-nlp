@@ -465,7 +465,7 @@ def train():
             dataprocessor.write_sentences(test_translation_out,
                                         os.path.join(args.save_dir,
                                                     'epoch{:d}_test_out_{:d}.txt').format(epoch_id, rank))
-            if rand == 0 and valid_bleu_score > best_valid_bleu:
+            if rank == 0 and valid_bleu_score > best_valid_bleu:
                 best_valid_bleu = valid_bleu_score
                 save_path = os.path.join(args.save_dir, 'valid_best.params')
                 logging.info('Save best parameters to {}'.format(save_path))
@@ -480,6 +480,7 @@ def train():
             model.save_parameters(save_path)
         mx.nd.waitall()
         logging.info('[{}] [Epoch {}] finished'.format(rank, epoch_id))
+        logging.StreamHandler().flush()
     if rank == 0:
         save_path = os.path.join(args.save_dir, 'average.params')
         mx.nd.save(save_path, average_param_dict)
