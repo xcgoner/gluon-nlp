@@ -474,6 +474,7 @@ def train():
         if rank == 0:
             save_path = os.path.join(args.save_dir, 'epoch{:d}.params'.format(epoch_id))
             model.save_parameters(save_path)
+        mx.nd.waitall()
     if rank == 0:
         save_path = os.path.join(args.save_dir, 'average.params')
         mx.nd.save(save_path, average_param_dict)
