@@ -147,8 +147,8 @@ logging.info(args)
 data_train, data_val, data_test, val_tgt_sentences, test_tgt_sentences, src_vocab, tgt_vocab \
     = dataprocessor.load_translation_data(dataset=args.dataset, bleu=args.bleu, args=args)
 
-dataprocessor.write_sentences(val_tgt_sentences, os.path.join(args.save_dir, 'val_gt.txt'))
-dataprocessor.write_sentences(test_tgt_sentences, os.path.join(args.save_dir, 'test_gt.txt'))
+# dataprocessor.write_sentences(val_tgt_sentences, os.path.join(args.save_dir, 'val_gt.txt'))
+# dataprocessor.write_sentences(test_tgt_sentences, os.path.join(args.save_dir, 'test_gt.txt'))
 
 data_train = data_train.transform(lambda src, tgt: (src, tgt, len(src), len(tgt)), lazy=False)
 data_val = gluon.data.SimpleDataset([(ele[0], ele[1], len(ele[0]), len(ele[1]), i)
@@ -457,10 +457,10 @@ def train():
                         .format(rank, epoch_id, test_loss, np.exp(test_loss), test_bleu_score * 100))
             dataprocessor.write_sentences(valid_translation_out,
                                         os.path.join(args.save_dir,
-                                                    'epoch{:d}_valid_out.txt').format(epoch_id))
+                                                    'epoch{:d}_valid_out_{:d}.txt').format(epoch_id, rank))
             dataprocessor.write_sentences(test_translation_out,
                                         os.path.join(args.save_dir,
-                                                    'epoch{:d}_test_out.txt').format(epoch_id))
+                                                    'epoch{:d}_test_out_{:d}.txt').format(epoch_id, rank))
             if rand == 0 and valid_bleu_score > best_valid_bleu:
                 best_valid_bleu = valid_bleu_score
                 save_path = os.path.join(args.save_dir, 'valid_best.params')
