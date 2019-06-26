@@ -133,6 +133,7 @@ parser.add_argument('--bleu', type=str, default='tweaked',
                     '"intl": This use international tokenization in mteval-v14a.pl')
 parser.add_argument('--log_interval', type=int, default=100, metavar='N',
                     help='report interval')
+parser.add_argument('--start_eval', type=int, default=5, help='epoch that starts evaluation')
 parser.add_argument('--save_dir', type=str, default='transformer_out',
                     help='directory path to save the final model and training log')
 parser.add_argument('--gpus', type=str,
@@ -439,37 +440,38 @@ def train():
         mx.nd.waitall()
 
         logging.info('[{}] [Epoch {}] time={:.2f}s'.format(rank, epoch_id, time.time()-epoch_start_time))
-        if rank == 0:
-            if epoch_id >= 5:
-                valid_loss, valid_translation_out = evaluate(val_data_loader, ctx[0])
-                valid_bleu_score, _, _, _, _ = compute_bleu([val_tgt_sentences], valid_translation_out,
-                                                            tokenized=tokenized, tokenizer=args.bleu,
-                                                            split_compound_word=split_compound_word,
-                                                            bpe=bpe)
-                logging.info('[{}] [Epoch {}] valid Loss={:.4f}, valid ppl={:.4f}, valid bleu={:.2f}'
-                            .format(rank, epoch_id, valid_loss, np.exp(valid_loss), valid_bleu_score * 100))
-                test_loss, test_translation_out = evaluate(test_data_loader, ctx[0])
-                test_bleu_score, _, _, _, _ = compute_bleu([test_tgt_sentences], test_translation_out,
+        if epoch_id >= args.start_eval:
+            valid_loss, valid_translation_out = evaluate(val_data_loader, ctx[0])
+            valid_bleu_score, _, _, _, _ = compute_bleu([val_tgt_sentences], valid_translation_out,
                                                         tokenized=tokenized, tokenizer=args.bleu,
                                                         split_compound_word=split_compound_word,
                                                         bpe=bpe)
-                logging.info('[{}] [Epoch {}] test Loss={:.4f}, test ppl={:.4f}, test bleu={:.2f}'
-                            .format(rank, epoch_id, test_loss, np.exp(test_loss), test_bleu_score * 100))
-                dataprocessor.write_sentences(valid_translation_out,
-                                            os.path.join(args.save_dir,
-                                                        'epoch{:d}_valid_out.txt').format(epoch_id))
-                dataprocessor.write_sentences(test_translation_out,
-                                            os.path.join(args.save_dir,
-                                                        'epoch{:d}_test_out.txt').format(epoch_id))
-                if valid_bleu_score > best_valid_bleu:
-                    best_valid_bleu = valid_bleu_score
-                    save_path = os.path.join(args.save_dir, 'valid_best.params')
-                    logging.info('Save best parameters to {}'.format(save_path))
-                    model.save_parameters(save_path)
-            else:
+            logging.info('[{}] [Epoch {}] valid Loss={:.4f}, valid ppl={:.4f}, valid bleu={:.2f}'
+                        .format(rank, epoch_id, valid_loss, np.exp(valid_loss), valid_bleu_score * 100))
+            test_loss, test_translation_out = evaluate(test_data_loader, ctx[0])
+            test_bleu_score, _, _, _, _ = compute_bleu([test_tgt_sentences], test_translation_out,
+                                                    tokenized=tokenized, tokenizer=args.bleu,
+                                                    split_compound_word=split_compound_word,
+                                                    bpe=bpe)
+            logging.info('[{}] [Epoch {}] test Loss={:.4f}, test ppl={:.4f}, test bleu={:.2f}'
+                        .format(rank, epoch_id, test_loss, np.exp(test_loss), test_bleu_score * 100))
+            dataprocessor.write_sentences(valid_translation_out,
+                                        os.path.join(args.save_dir,
+                                                    'epoch{:d}_valid_out.txt').format(epoch_id))
+            dataprocessor.write_sentences(test_translation_out,
+                                        os.path.join(args.save_dir,
+                                                    'epoch{:d}_test_out.txt').format(epoch_id))
+            if rand == 0 and valid_bleu_score > best_valid_bleu:
+                best_valid_bleu = valid_bleu_score
                 save_path = os.path.join(args.save_dir, 'valid_best.params')
                 logging.info('Save best parameters to {}'.format(save_path))
                 model.save_parameters(save_path)
+        else:
+            if rank == 0:
+                save_path = os.path.join(args.save_dir, 'valid_best.params')
+                logging.info('Save best parameters to {}'.format(save_path))
+                model.save_parameters(save_path)
+        if rank == 0:
             save_path = os.path.join(args.save_dir, 'epoch{:d}.params'.format(epoch_id))
             model.save_parameters(save_path)
     if rank == 0:
