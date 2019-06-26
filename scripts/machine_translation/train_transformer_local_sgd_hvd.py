@@ -428,6 +428,9 @@ def train():
                 log_avg_loss = 0
                 log_wc = 0
 
+                if batch_id > float(len(train_data_loader)) / hvd.size():
+                    break
+
                 # # debug
                 # if batch_id > 2000:
                 #     break
@@ -476,6 +479,7 @@ def train():
             save_path = os.path.join(args.save_dir, 'epoch{:d}.params'.format(epoch_id))
             model.save_parameters(save_path)
         mx.nd.waitall()
+        logging.info('[{}] [Epoch {}] finished'.format(rank, epoch_id))
     if rank == 0:
         save_path = os.path.join(args.save_dir, 'average.params')
         mx.nd.save(save_path, average_param_dict)
