@@ -455,6 +455,7 @@ def train():
                                                     bpe=bpe)
             logging.info('[{}] [Epoch {}] test Loss={:.4f}, test ppl={:.4f}, test bleu={:.2f}'
                         .format(rank, epoch_id, test_loss, np.exp(test_loss), test_bleu_score * 100))
+            logging.StreamHandler().flush()
             dataprocessor.write_sentences(valid_translation_out,
                                         os.path.join(args.save_dir,
                                                     'epoch{:d}_valid_out_{:d}.txt').format(epoch_id, rank))
