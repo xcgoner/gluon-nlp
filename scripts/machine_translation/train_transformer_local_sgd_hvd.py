@@ -336,7 +336,7 @@ def train():
     warmup_steps = args.warmup_steps
     grad_interval = args.num_accumulated
     model.collect_params().setattr('grad_req', 'add')
-    average_start = (len(train_data_loader) // grad_interval) * (args.epochs - args.average_start)
+    average_start = (len(train_data_loader) // grad_interval // num_workers) * (args.epochs - args.average_start)
     average_param_dict = None
     model.collect_params().zero_grad()
     parallel = Parallel(num_ctxs, parallel_model)
