@@ -100,6 +100,7 @@ parser.add_argument('--tgt_max_len', type=int, default=-1, help='Maximum length 
                                                                 'sentence, -1 means no clipping')
 parser.add_argument('--optimizer', type=str, default='adam', help='optimization algorithm')
 parser.add_argument('--local_sgd', type=int, default=0, help='the number of local iterations of local SGD (initial value)')
+parser.add_argument('--local_sgd_beta_3', type=float, default=0.98, help='the moving average of v, used in allreduce_states')
 parser.add_argument('--local_sgd_warmup', type=int, default=5, help='warmup of local sgd')
 parser.add_argument('--local_sgd_epochs', type=str, default=None, help='the epoch that local SGD changes')
 parser.add_argument('--local_sgd_schedule', type=str, default=None, help='the schedule of local SGD')
@@ -287,7 +288,7 @@ def train():
     #     trainer._local_sgd = local_sgd
     # else:
     trainer = LocalSGDTrainer(model.collect_params(), args.optimizer,
-                            {'learning_rate': args.lr, 'beta2': 0.98, 'epsilon': 1e-9}, update_on_kvstore=False, local_sgd=local_sgd, local_sgd_regularization=args.local_sgd_regularization, local_sgd_regularization_interval=args.local_sgd_regularization_interval)
+                            {'learning_rate': args.lr, 'beta2': 0.98, 'epsilon': 1e-9}, update_on_kvstore=False, local_sgd=local_sgd, local_sgd_regularization=args.local_sgd_regularization, local_sgd_regularization_interval=args.local_sgd_regularization_interval, beta_3=args.local_sgd_beta_3)
 
     train_data_loader, val_data_loader, test_data_loader \
         = dataprocessor.make_dataloader(data_train, data_val, data_test, args,
@@ -349,10 +350,11 @@ def train():
                 step_num += 1
                 new_lr = args.lr / math.sqrt(args.num_units) \
                          * min(1. / math.sqrt(step_num), step_num * warmup_steps ** (-1.5))
-                if epoch_id < local_sgd_warmup:
-                    new_lr /= math.sqrt(len(ctx))
-                else:
-                    new_lr /= math.pow(len(ctx), 1/3.)
+                # if epoch_id < local_sgd_warmup:
+                #     new_lr /= math.sqrt(len(ctx))
+                # else:
+                #     new_lr /= math.pow(len(ctx), 1/3.)
+                new_lr /= math.sqrt(len(ctx))
                 trainer.set_learning_rate(new_lr)
             if batch_id == 0:
                 src_wc, tgt_wc, bs = np.sum([(shard[2].sum(), shard[3].sum(), shard[0].shape[0])
