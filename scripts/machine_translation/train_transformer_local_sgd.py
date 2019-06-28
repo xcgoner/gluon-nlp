@@ -351,6 +351,8 @@ def train():
                          * min(1. / math.sqrt(step_num), step_num * warmup_steps ** (-1.5))
                 if epoch_id < local_sgd_warmup:
                     new_lr /= math.sqrt(len(ctx))
+                else:
+                    new_lr /= math.pow(len(ctx), 1/3.)
                 trainer.set_learning_rate(new_lr)
             if batch_id == 0:
                 src_wc, tgt_wc, bs = np.sum([(shard[2].sum(), shard[3].sum(), shard[0].shape[0])
