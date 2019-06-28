@@ -527,8 +527,8 @@ class LocalSGDTrainer(object):
                                         self._v_buf[i] = state_arrays_copy
                                     else:
                                         for k, state in enumerate(state_arrays):
-                                            state *= (1-self._beta_3)
-                                            state += (self._v_buf[i][k] * self._beta_3)
+                                            state *= self._beta_3
+                                            state += (self._v_buf[i][k] * (1-self._beta_3))
                                             self._v_buf[i][k][:] = state
 
                             else:
