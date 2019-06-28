@@ -143,7 +143,8 @@ def get_model(name, **kwargs):
               'bert_6_768_3'       : bert_6_768_3,
               'bert_6_768_12'       : bert_6_768_12,
               'bert_12_768_12'       : bert_12_768_12,
-              'bert_24_1024_16'      : bert_24_1024_16}
+              'bert_24_1024_16'      : bert_24_1024_16,
+              'ernie_12_768_12'      : ernie_12_768_12}
     name = name.lower()
     if name not in models:
         raise ValueError(
