@@ -235,8 +235,8 @@ else:
 output_dir = args.output_dir
 if pretrained_bert_parameters:
     logging.info('loading bert params from %s', pretrained_bert_parameters)
-    model.bert.load_parameters(pretrained_bert_parameters, ctx=ctx,
-                               ignore_extra=True)
+    nlp.utils.load_parameters(model.bert, pretrained_bert_parameters, ctx=ctx,
+                              ignore_extra=True, cast_dtype=True)
 if model_parameters:
     logging.info('loading model params from %s', model_parameters)
     model.load_parameters(model_parameters, ctx=ctx)
