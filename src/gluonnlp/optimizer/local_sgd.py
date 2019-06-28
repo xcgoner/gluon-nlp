@@ -529,6 +529,7 @@ class LocalSGDTrainer(object):
                                         for k, state in enumerate(state_arrays):
                                             state *= (1-self._beta_3)
                                             state += (self._v_buf[i][k] * self._beta_3)
+                                            self._v_buf[i][k][:] = state
 
                             else:
                                 raise ValueError("Cannot pull row_sparse parameters for local SGD")
