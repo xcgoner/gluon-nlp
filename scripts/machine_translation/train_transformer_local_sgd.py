@@ -101,7 +101,6 @@ parser.add_argument('--tgt_max_len', type=int, default=-1, help='Maximum length 
 parser.add_argument('--optimizer', type=str, default='adam', help='optimization algorithm')
 parser.add_argument('--local_sgd', type=int, default=0, help='the number of local iterations of local SGD (initial value)')
 parser.add_argument('--local_sgd_beta_3', type=float, default=0.98, help='the moving average of v, used in allreduce_states')
-parser.add_argument('--local_sgd_warmup', type=int, default=5, help='warmup of local sgd')
 parser.add_argument('--local_sgd_epochs', type=str, default=None, help='the epoch that local SGD changes')
 parser.add_argument('--local_sgd_schedule', type=str, default=None, help='the schedule of local SGD')
 parser.add_argument('--local_sgd_regularization', type=float, default=0, help='the regularization weight of local SGD')
@@ -205,10 +204,10 @@ logging.info('Use beam_size={}, alpha={}, K={}'.format(args.beam_size, args.lp_a
 label_smoothing = LabelSmoothing(epsilon=args.epsilon, units=len(tgt_vocab))
 label_smoothing.hybridize(static_alloc=static_alloc)
 
-loss_function = SoftmaxCEMaskedLoss(sparse_label=False)
+loss_function = MaskedSoftmaxCELoss(sparse_label=False)
 loss_function.hybridize(static_alloc=static_alloc)
 
-test_loss_function = SoftmaxCEMaskedLoss()
+test_loss_function = MaskedSoftmaxCELoss()
 test_loss_function.hybridize(static_alloc=static_alloc)
 
 rescale_loss = 100
@@ -261,8 +260,7 @@ def evaluate(data_loader, context=ctx[0]):
         if args.bleu == 'tweaked':
             real_translation_out[ind] = sentence
         elif args.bleu == '13a' or args.bleu == 'intl':
-            real_translation_out[ind] = detokenizer(_bpe_to_words(sentence),
-                                                    return_str=True)
+            real_translation_out[ind] = detokenizer(_bpe_to_words(sentence))
         else:
             raise NotImplementedError
     return avg_loss, real_translation_out
@@ -308,7 +306,6 @@ def train():
     best_valid_bleu = 0.0
     step_num = 0
     warmup_steps = args.warmup_steps
-    local_sgd_warmup = args.local_sgd_warmup
     grad_interval = args.num_accumulated
     model.collect_params().setattr('grad_req', 'add')
     average_start = (len(train_data_loader) // grad_interval) * (args.epochs - args.average_start)
@@ -356,8 +353,7 @@ def train():
                 #     new_lr /= math.pow(len(ctx), 1/3.)
                 new_lr /= math.sqrt(len(ctx))
                 trainer.set_learning_rate(new_lr)
-            if batch_id == 0:
-                src_wc, tgt_wc, bs = np.sum([(shard[2].sum(), shard[3].sum(), shard[0].shape[0])
+            src_wc, tgt_wc, bs = np.sum([(shard[2].sum(), shard[3].sum(), shard[0].shape[0])
                                             for shard in seqs], axis=0)
             seqs = [[seq.as_in_context(context) for seq in shard]
                     for context, shard in zip(ctx, seqs)]
@@ -365,10 +361,9 @@ def train():
             for seq in seqs:
                 parallel.put((seq, args.batch_size))
             Ls = [parallel.get() for _ in range(len(ctx))]
-            if batch_id == 0:
-                src_wc = src_wc.asscalar()
-                tgt_wc = tgt_wc.asscalar()
-                loss_denom += tgt_wc - bs
+            src_wc = src_wc.asscalar()
+            tgt_wc = tgt_wc.asscalar()
+            loss_denom += tgt_wc - bs
             if batch_id % grad_interval == grad_interval - 1 or\
                     batch_id == len(train_data_loader) - 1:
                 step_size = float(loss_denom) / args.batch_size / 100.0
@@ -396,22 +391,16 @@ def train():
                 # step_loss = 0
             # log_wc += src_wc + tgt_wc
             if (batch_id + 1) % (args.log_interval * grad_interval) == 0:
-                # approximate the logging
-                mx.nd.waitall()
-                step_loss = sum([L.asscalar() for L in Ls])
-                log_avg_loss = step_loss / loss_denom * args.batch_size * 100.0
-                log_wc = (src_wc + tgt_wc) * (args.log_interval * grad_interval)
                 wps = log_wc / (time.time() - log_start_time)
-
                 logging.info('[Epoch {} Batch {}/{}] loss={:.4f}, ppl={:.4f}, '
                              'throughput={:.2f}K wps, wc={:.2f}K'
                              .format(epoch_id, batch_id + 1, len(train_data_loader),
-                                     log_avg_loss,
-                                     np.exp(log_avg_loss),
+                                     log_avg_loss / args.log_interval,
+                                     np.exp(log_avg_loss / args.log_interval),
                                      wps / 1000, log_wc / 1000))
                 log_start_time = time.time()
-                # log_avg_loss = 0
-                # log_wc = 0
+                log_avg_loss = 0
+                log_wc = 0
         if local_sgd > 1:
             # synchronous model parameters for local sgd
             trainer.allreduce_params()
