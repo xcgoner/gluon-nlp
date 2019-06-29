@@ -384,12 +384,13 @@ def train():
                         for i in range(len(ctx)):
                             for name, average_param in average_param_dict_list[i].items():
                                 average_param[:] += alpha * (param_dict[name].data(ctx[i]) - average_param)
-            # step_loss += sum([L.asscalar() for L in Ls])
-            # if batch_id % grad_interval == grad_interval - 1 or\
-            #         batch_id == len(train_data_loader) - 1:
-                # loss_denom = 0
-                # step_loss = 0
-            # log_wc += src_wc + tgt_wc
+            step_loss += sum([L.asscalar() for L in Ls])
+            if batch_id % grad_interval == grad_interval - 1 or\
+                    batch_id == len(train_data_loader) - 1:
+                log_avg_loss += step_loss / loss_denom * args.batch_size * 100.0
+                loss_denom = 0
+                step_loss = 0
+            log_wc += src_wc + tgt_wc
             if (batch_id + 1) % (args.log_interval * grad_interval) == 0:
                 wps = log_wc / (time.time() - log_start_time)
                 logging.info('[Epoch {} Batch {}/{}] loss={:.4f}, ppl={:.4f}, '
