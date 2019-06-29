@@ -105,6 +105,7 @@ parser.add_argument('--local_sgd_schedule', type=str, default=None, help='the sc
 parser.add_argument('--local_sgd_regularization', type=float, default=0, help='the regularization weight of local SGD')
 parser.add_argument('--local_sgd_regularization_interval', type=int, default=0, help='the interval of regularization of local SGD')
 parser.add_argument('--lr', type=float, default=1.0, help='Initial learning rate')
+parser.add_argument('--beta2', type=float, default=0.98, help='beta2')
 parser.add_argument('--warmup_steps', type=float, default=4000,
                     help='number of warmup steps used in NOAM\'s stepsize schedule')
 parser.add_argument('--num_accumulated', type=int, default=1,
@@ -285,7 +286,7 @@ def train():
     #     trainer._local_sgd = local_sgd
     # else:
     trainer = LocalSGDTrainer(model.collect_params(), args.optimizer,
-                            {'learning_rate': args.lr, 'beta2': 0.98, 'epsilon': 1e-9}, update_on_kvstore=False, local_sgd=local_sgd, local_sgd_regularization=args.local_sgd_regularization, local_sgd_regularization_interval=args.local_sgd_regularization_interval)
+                            {'learning_rate': args.lr, 'beta2': args.beta2, 'epsilon': 1e-9}, update_on_kvstore=False, local_sgd=local_sgd, local_sgd_regularization=args.local_sgd_regularization, local_sgd_regularization_interval=args.local_sgd_regularization_interval)
 
     train_data_loader, val_data_loader, test_data_loader \
         = dataprocessor.make_dataloader(data_train, data_val, data_test, args,

@@ -507,8 +507,6 @@ class LocalSGDTrainer(object):
                     if isinstance(self._updaters[0].states[i], (tuple, list)):
                         # for some optimizers, there are multiple states (mean, variance), such as Adam
                         for j in range(len(self._updaters[0].states[i])):
-                            if j > 0:
-                                break
                             state_arrays = [updater.states[i][j] for updater in self._updaters]
                             idx = i+len(self._params)*(j+1)
                             self._kvstore.push(idx, state_arrays, priority=i-len(self._params)*2)
