@@ -351,7 +351,8 @@ def train():
                 #     new_lr /= math.sqrt(len(ctx))
                 # else:
                 #     new_lr /= math.pow(len(ctx), 1/3.)
-                new_lr /= math.sqrt(len(ctx))
+                if local_sgd > 1:
+                    new_lr /= math.sqrt(len(ctx))
                 trainer.set_learning_rate(new_lr)
             src_wc, tgt_wc, bs = np.sum([(shard[2].sum(), shard[3].sum(), shard[0].shape[0])
                                             for shard in seqs], axis=0)
