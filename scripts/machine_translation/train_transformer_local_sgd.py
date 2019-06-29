@@ -100,7 +100,6 @@ parser.add_argument('--tgt_max_len', type=int, default=-1, help='Maximum length 
                                                                 'sentence, -1 means no clipping')
 parser.add_argument('--optimizer', type=str, default='adam', help='optimization algorithm')
 parser.add_argument('--local_sgd', type=int, default=0, help='the number of local iterations of local SGD (initial value)')
-parser.add_argument('--local_sgd_beta_3', type=float, default=0.98, help='the moving average of v, used in allreduce_states')
 parser.add_argument('--local_sgd_epochs', type=str, default=None, help='the epoch that local SGD changes')
 parser.add_argument('--local_sgd_schedule', type=str, default=None, help='the schedule of local SGD')
 parser.add_argument('--local_sgd_regularization', type=float, default=0, help='the regularization weight of local SGD')
@@ -286,7 +285,7 @@ def train():
     #     trainer._local_sgd = local_sgd
     # else:
     trainer = LocalSGDTrainer(model.collect_params(), args.optimizer,
-                            {'learning_rate': args.lr, 'beta2': 0.98, 'epsilon': 1e-9}, update_on_kvstore=False, local_sgd=local_sgd, local_sgd_regularization=args.local_sgd_regularization, local_sgd_regularization_interval=args.local_sgd_regularization_interval, beta_3=args.local_sgd_beta_3)
+                            {'learning_rate': args.lr, 'beta2': 0.98, 'epsilon': 1e-9}, update_on_kvstore=False, local_sgd=local_sgd, local_sgd_regularization=args.local_sgd_regularization, local_sgd_regularization_interval=args.local_sgd_regularization_interval)
 
     train_data_loader, val_data_loader, test_data_loader \
         = dataprocessor.make_dataloader(data_train, data_val, data_test, args,

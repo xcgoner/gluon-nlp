@@ -69,7 +69,7 @@ class LocalSGDTrainer(object):
         optimizer, its learning rate can be accessed as optimizer.learning_rate.
     """
     def __init__(self, params, optimizer, optimizer_params=None, kvstore='device',
-                 compression_params=None, update_on_kvstore=None, local_sgd=None, local_sgd_regularization=0, local_sgd_regularization_interval=0, beta_3=0.98):
+                 compression_params=None, update_on_kvstore=None, local_sgd=None, local_sgd_regularization=0, local_sgd_regularization_interval=0):
         if isinstance(params, (dict, ParameterDict)):
             params = list(params.values())
         if not isinstance(params, (list, tuple)):
@@ -111,9 +111,6 @@ class LocalSGDTrainer(object):
         self._local_sgd_regularization_interval = local_sgd_regularization_interval
         self._local_sgd_regularization_counter = 0
         self._is_states_initialized = False
-        self._beta_3 = beta_3
-        self._v_buf = {}
-        self._v_buf_initialized = False
 
         self._kvstore_params = {'kvstore': kvstore, 'update_on_kvstore': update_on_kvstore}
         self._kv_initialized = False
@@ -510,6 +507,8 @@ class LocalSGDTrainer(object):
                     if isinstance(self._updaters[0].states[i], (tuple, list)):
                         # for some optimizers, there are multiple states (mean, variance), such as Adam
                         for j in range(len(self._updaters[0].states[i])):
+                            if j > 0:
+                                break
                             state_arrays = [updater.states[i][j] for updater in self._updaters]
                             idx = i+len(self._params)*(j+1)
                             self._kvstore.push(idx, state_arrays, priority=i-len(self._params)*2)
@@ -520,16 +519,6 @@ class LocalSGDTrainer(object):
                                 num_workers = float(self._kvstore.num_workers * len(state_arrays))
                                 for state in state_arrays:
                                     state /= num_workers
-                                if j == 1:
-                                    # only for v
-                                    if not self._v_buf_initialized:
-                                        state_arrays_copy = [state.copy() for state in state_arrays]
-                                        self._v_buf[i] = state_arrays_copy
-                                    else:
-                                        for k, state in enumerate(state_arrays):
-                                            state *= self._beta_3
-                                            state += (self._v_buf[i][k] * (1-self._beta_3))
-                                            self._v_buf[i][k][:] = state
 
                             else:
                                 raise ValueError("Cannot pull row_sparse parameters for local SGD")
@@ -546,7 +535,6 @@ class LocalSGDTrainer(object):
                                 state /= num_workers
                         else:
                             raise ValueError("Cannot pull row_sparse parameters for local SGD")
-            self._v_buf_initialized = True
 
 
     def update(self, batch_size, ignore_stale_grad=False):
