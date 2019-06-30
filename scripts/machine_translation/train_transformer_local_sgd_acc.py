@@ -285,7 +285,7 @@ def train():
     # accumulate grads
     if args.batch_factor_epochs is not None and args.batch_factor_schedule is not None:
         batch_factor_epochs = [int(i) for i in args.batch_factor_epochs.split(',')]
-        batch_factor_schedule = [int(i) for i in args.batch_factor_schedule.split(',')]
+        batch_factor_schedule = [float(i) for i in args.batch_factor_schedule.split(',')]
     else:
         batch_factor_epochs = []
         batch_factor_schedule = []
