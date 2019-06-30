@@ -111,8 +111,8 @@ parser.add_argument('--warmup_steps', type=float, default=4000,
 parser.add_argument('--num_accumulated', type=int, default=1,
                     help='Number of steps to accumulate the gradients. '
                          'This is useful to mimic large batch training with limited gpu memory')
-parser.add_argument('--num_accumulated_epochs', type=str, default=None, help='epochs that change num_accumulated')
-parser.add_argument('--num_accumulated_schedule', type=str, default=None, help='schedule of changing num_accumulated')
+parser.add_argument('--batch_factor_epochs', type=str, default=None, help='epochs that change num_accumulated')
+parser.add_argument('--batch_factor_schedule', type=str, default=None, help='schedule of changing num_accumulated')
 parser.add_argument('--magnitude', type=float, default=3.0,
                     help='Magnitude of Xavier initialization')
 parser.add_argument('--average_checkpoint', action='store_true',
@@ -283,12 +283,12 @@ def train():
     local_sgd = args.local_sgd
 
     # accumulate grads
-    if args.num_accumulated_epochs is not None and args.num_accumulated_schedule is not None:
-        num_accumulated_epochs = [int(i) for i in args.num_accumulated_epochs.split(',')]
-        num_accumulated_schedule = [int(i) for i in args.num_accumulated_schedule.split(',')]
+    if args.batch_factor_epochs is not None and args.batch_factor_schedule is not None:
+        batch_factor_epochs = [int(i) for i in args.batch_factor_epochs.split(',')]
+        batch_factor_schedule = [int(i) for i in args.batch_factor_schedule.split(',')]
     else:
-        num_accumulated_epochs = []
-        num_accumulated_schedule = []
+        batch_factor_epochs = []
+        batch_factor_schedule = []
 
     # if local_sgd_epochs is not None:
     #     trainer = gluon.Trainer(model.collect_params(), args.optimizer,
@@ -325,6 +325,8 @@ def train():
     
     average_counter = 0
 
+    batch_factor = 1
+
     for epoch_id in range(args.epochs):
         log_avg_loss = 0
         log_wc = 0
@@ -348,8 +350,9 @@ def train():
             local_sgd = new_local_sgd
 
         # grad_interval
-        if epoch_id in num_accumulated_epochs:
-            grad_interval = num_accumulated_schedule[num_accumulated_epochs.index(epoch_id)]
+        if epoch_id in batch_factor_epochs:
+            batch_factor = batch_factor_schedule[batch_factor_epochs.index(epoch_id)]
+        grad_interval = args.num_accumulated * batch_factor
 
                     
         for batch_id, seqs \
@@ -367,6 +370,9 @@ def train():
                 #     new_lr /= math.pow(len(ctx), 1/3.)
                 # if local_sgd > 1:
                 #     new_lr /= math.sqrt(len(ctx))
+
+                new_lr *= math.sqrt(batch_factor)
+
                 trainer.set_learning_rate(new_lr)
             src_wc, tgt_wc, bs = np.sum([(shard[2].sum(), shard[3].sum(), shard[0].shape[0])
                                             for shard in seqs], axis=0)
