@@ -105,6 +105,7 @@ parser.add_argument('--local_sgd_schedule', type=str, default=None, help='the sc
 parser.add_argument('--local_sgd_regularization', type=float, default=0, help='the regularization weight of local SGD')
 parser.add_argument('--local_sgd_regularization_interval', type=int, default=0, help='the interval of regularization of local SGD')
 parser.add_argument('--lr', type=float, default=1.0, help='Initial learning rate')
+parser.add_argument('--lr_decay', type=float, default=0.5, help='learning rate decay')
 parser.add_argument('--beta2', type=float, default=0.98, help='beta2')
 parser.add_argument('--warmup_steps', type=float, default=4000,
                     help='number of warmup steps used in NOAM\'s stepsize schedule')
@@ -312,6 +313,7 @@ def train():
     average_param_dict_list = None
     model.collect_params().zero_grad()
     parallel = Parallel(num_ctxs, parallel_model)
+    lr_decay = args.lr_decay
     
     average_counter = 0
 
@@ -346,7 +348,7 @@ def train():
             if batch_id % grad_interval == 0:
                 step_num += 1
                 new_lr = args.lr / math.sqrt(args.num_units) \
-                         * min(1. / math.sqrt(step_num), step_num * warmup_steps ** (-1.5))
+                         * min(1. / math.pow(step_num, lr_decay), step_num * warmup_steps ** (-1.5))
                 # if epoch_id < local_sgd_warmup:
                 #     new_lr /= math.sqrt(len(ctx))
                 # else:
