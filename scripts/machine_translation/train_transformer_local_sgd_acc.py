@@ -111,6 +111,8 @@ parser.add_argument('--warmup_steps', type=float, default=4000,
 parser.add_argument('--num_accumulated', type=int, default=1,
                     help='Number of steps to accumulate the gradients. '
                          'This is useful to mimic large batch training with limited gpu memory')
+parser.add_argument('--num_accumulated_epochs', type=str, default=None, help='epochs that change num_accumulated')
+parser.add_argument('--num_accumulated_schedule', type=str, default=None, help='schedule of changing num_accumulated')
 parser.add_argument('--magnitude', type=float, default=3.0,
                     help='Magnitude of Xavier initialization')
 parser.add_argument('--average_checkpoint', action='store_true',
@@ -280,6 +282,14 @@ def train():
         local_sgd_schedule = None
     local_sgd = args.local_sgd
 
+    # accumulate grads
+    if args.num_accumulated_epochs is not None and args.num_accumulated_schedule is not None:
+        num_accumulated_epochs = [int(i) for i in args.num_accumulated_epochs.split(',')]
+        num_accumulated_schedule = [int(i) for i in args.num_accumulated_schedule.split(',')]
+    else:
+        num_accumulated_epochs = []
+        num_accumulated_schedule = []
+
     # if local_sgd_epochs is not None:
     #     trainer = gluon.Trainer(model.collect_params(), args.optimizer,
     #                         {'learning_rate': args.lr, 'beta2': 0.98, 'epsilon': 1e-9}, update_on_kvstore=False, local_sgd=2, local_sgd_regularization=args.local_sgd_regularization, local_sgd_regularization_interval=args.local_sgd_regularization_interval)
@@ -337,6 +347,10 @@ def train():
             trainer._local_sgd = new_local_sgd
             local_sgd = new_local_sgd
 
+        # grad_interval
+        if epoch_id in num_accumulated_epochs:
+            grad_interval = num_accumulated_schedule[num_accumulated_epochs.index(epoch_id)]
+
                     
         for batch_id, seqs \
                 in enumerate(train_data_loader):
@@ -368,11 +382,9 @@ def train():
             if batch_id % grad_interval == grad_interval - 1 or\
                     batch_id == len(train_data_loader) - 1:
                 step_size = float(loss_denom) / args.batch_size / 100.0
-                # step_size *= (args.num_accumulated / grad_interval)
                 if local_sgd > 1:
                     step_size /= len(ctx)
                 is_sync = trainer.step(step_size)
-                # grad_interval = args.num_accumulated
                 param_dict = model.collect_params()
                 param_dict.zero_grad()
                 if step_num > average_start:
