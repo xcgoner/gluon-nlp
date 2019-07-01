@@ -267,6 +267,8 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx, sto
                     running_num_tks += valid_length.sum().as_in_context(mx.cpu())
                 
                 if not param_initialized:
+                    mx.nd.waitall()
+                    logging.info("before broadcast")
                     param_dict.zero_grad()
                     # sync params
                     trainer.broadcast_params()
