@@ -36,6 +36,7 @@ import warnings
 import logging
 import functools
 import time
+import math
 
 import mxnet as mx
 import gluonnlp as nlp
