@@ -150,7 +150,7 @@ class ParallelBERT(nlp.utils.Parallelizable):
 
 def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
     """Training function."""
-    hvd.broadcast_parameters(model.collect_params(), root_rank=0)
+    # hvd.broadcast_parameters(model.collect_params(), root_rank=0)
 
     mlm_metric = nlp.metric.MaskedAccuracy()
     nsp_metric = nlp.metric.MaskedAccuracy()
@@ -202,6 +202,9 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx, sto
                                   store.num_workers * accumulate, trainer=fp16_trainer)
     num_ctxes = len(ctx)
     parallel = nlp.utils.Parallel(num_ctxes if num_ctxes > 1 else 0, parallel_model)
+
+    param_initialized = False
+    
 
     logging.debug('Training started')
     while step_num < num_train_steps:
@@ -262,6 +265,12 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx, sto
                     running_mlm_loss += ls1.as_in_context(mx.cpu()) / num_ctxes
                     running_nsp_loss += ls2.as_in_context(mx.cpu()) / num_ctxes
                     running_num_tks += valid_length.sum().as_in_context(mx.cpu())
+                
+                if not param_initialized:
+                    param_dict.zero_grad()
+                    # sync params
+                    trainer.broadcast_params()
+                    continue
 
                 # # forward
                 # with mx.autograd.record():
