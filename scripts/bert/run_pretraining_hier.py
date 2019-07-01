@@ -236,7 +236,7 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx, sto
                 # load data
                 if args.use_avg_len:
                     data_list = [[seq.as_in_context(context) for seq in shard]
-                                 for context, shard in zip([ctx], data_batch)]
+                                 for context, shard in zip(ctx, data_batch)]
                 else:
                     # data_list = list(split_and_load(data_batch, [ctx]))
                     if data_batch[0].shape[0] < len(ctx):
@@ -313,7 +313,7 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx, sto
                         # eval data is always based on a fixed npz file.
                         dataset_eval = get_pretrain_data_npz(data_eval, args.batch_size_eval, 1,
                                                              False, False, 1)
-                        evaluate(dataset_eval, model, nsp_loss, mlm_loss, len(vocab), [ctx],
+                        evaluate(dataset_eval, model, nsp_loss, mlm_loss, len(vocab), ctx,
                                  args.log_interval, args.dtype)
 
                 batch_num += 1
@@ -348,7 +348,7 @@ if __name__ == '__main__':
             dataset_name = None
         vocab = nlp.vocab.BERTVocab.from_sentencepiece(args.sentencepiece)
 
-    model, nsp_loss, mlm_loss, vocab = get_model_loss([ctx], args.model, args.pretrained,
+    model, nsp_loss, mlm_loss, vocab = get_model_loss(ctx, args.model, args.pretrained,
                                                       dataset_name, vocab, args.dtype,
                                                       ckpt_dir=args.ckpt_dir,
                                                       start_step=args.start_step)
@@ -403,5 +403,5 @@ if __name__ == '__main__':
         # eval data is always based on a fixed npz file.
         dataset_eval = get_pretrain_data_npz(data_eval, args.batch_size_eval, 1,
                                              False, False, 1)
-        evaluate(dataset_eval, model, nsp_loss, mlm_loss, len(vocab), [ctx],
+        evaluate(dataset_eval, model, nsp_loss, mlm_loss, len(vocab), ctx,
                  args.log_interval, args.dtype)
