@@ -253,12 +253,8 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx, sto
                 mask_label_list, mask_pred_list, mask_weight_list = [], [], []
 
                 # parallel forward / backward
-                mx.nd.waitall()
-                logging.info("before parallel forward / backward")
                 for data in data_list:
                     parallel.put(data)
-                mx.nd.waitall()
-                logging.info("after parallel forward / backward")
                 for _ in range(len(ctx)):
                     (_, next_sentence_label, classified, masked_id,
                      decoded, masked_weight, ls1, ls2, valid_length) = parallel.get()
@@ -270,8 +266,6 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx, sto
                     running_mlm_loss += ls1.as_in_context(mx.cpu()) / num_ctxes
                     running_nsp_loss += ls2.as_in_context(mx.cpu()) / num_ctxes
                     running_num_tks += valid_length.sum().as_in_context(mx.cpu())
-                mx.nd.waitall()
-                logging.info("compute loss finished")
                 
                 if not param_initialized:
                     mx.nd.waitall()
