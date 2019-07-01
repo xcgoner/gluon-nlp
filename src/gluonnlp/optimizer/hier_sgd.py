@@ -23,6 +23,10 @@ from mxnet import optimizer as opt
 from mxnet.model import _create_kvstore, _create_sparse_kvstore
 from mxnet.gluon.parameter import ParameterDict, Parameter
 
+import mxnet as mx
+import types
+import warnings
+
 import horovod.mxnet as hvd
 
 class DistributedHierTrainer(mx.gluon.Trainer):
