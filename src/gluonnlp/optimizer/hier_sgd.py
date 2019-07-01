@@ -31,10 +31,6 @@ import horovod.mxnet as hvd
 
 class DistributedHierTrainer(mx.gluon.Trainer):
     def __init__(self, params, optimizer, optimizer_params=None, kvstore='device'):
-        if isinstance(optimizer, DistributedOptimizer):
-            optimizer = optimizer._optimizer
-            warnings.warn("DistributedHierTrainer does not take DistributedOptimizer "
-                          "as its optimizer. We have unwrapped it for you.")
 
         super(DistributedHierTrainer, self).__init__(
             params, optimizer, optimizer_params=optimizer_params, kvstore=kvstore, update_on_kvstore=False)
