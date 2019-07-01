@@ -52,7 +52,9 @@ class BERTLayerNorm(nn.LayerNorm):
                                             prefix=prefix, params=params)
     def hybrid_forward(self, F, data, gamma, beta):
         """forward computation."""
-        return F.LayerNorm(data, gamma=gamma, beta=beta, axis=self._axis, eps=self._epsilon)
+        # return F.LayerNorm(data, gamma=gamma, beta=beta, axis=self._axis, eps=self._epsilon)
+        return F.LayerNorm(data.astype('float32'), gamma=gamma.astype('float32'), beta=beta.astype('float32'), axis=self._axis, eps=self._epsilon).astype('float16')
+
 
 
 class BERTPositionwiseFFN(BasePositionwiseFFN):
