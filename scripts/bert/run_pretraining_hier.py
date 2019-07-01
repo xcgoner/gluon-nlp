@@ -270,6 +270,7 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx, sto
                     param_dict.zero_grad()
                     # sync params
                     trainer.broadcast_params()
+                    param_initialized = True
                     continue
 
                 # # forward
@@ -346,7 +347,7 @@ if __name__ == '__main__':
         ctx_list_size = int(math.ceil(len(ctx) / float(num_local_workers)))
         ctx = ctx[(local_rank * ctx_list_size) : min((local_rank+1)*ctx_list_size, len(ctx))]
     # debug
-    logging.debug(ctx)
+    logging.info(ctx)
 
     dataset_name, vocab = args.dataset_name, None
     if args.sentencepiece:
