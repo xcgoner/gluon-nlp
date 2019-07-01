@@ -271,6 +271,8 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx, sto
                     # sync params
                     trainer.broadcast_params()
                     param_initialized = True
+                    mx.nd.waitall()
+                    logging.info("broadcast finished")
                     continue
 
                 # # forward
