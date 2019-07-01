@@ -258,7 +258,7 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx, sto
                 for data in data_list:
                     parallel.put(data)
                 mx.nd.waitall()
-                logging.info("before parallel forward / backward")
+                logging.info("after parallel forward / backward")
                 for _ in range(len(ctx)):
                     (_, next_sentence_label, classified, masked_id,
                      decoded, masked_weight, ls1, ls2, valid_length) = parallel.get()
