@@ -169,7 +169,7 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx, sto
     else:
         loss_scale_param = None
     # use default kvstore='device'
-    trainer = DistributedHierTrainer(model.collect_params(), args.optimizer, optim_params)
+    trainer = DistributedHierTrainer(model.collect_params(), args.optimizer, optim_params, kvstore=store)
     fp16_trainer = FP16Trainer(trainer, dynamic_loss_scale=dynamic_loss_scale,
                                loss_scaler_params=loss_scale_param)
 
