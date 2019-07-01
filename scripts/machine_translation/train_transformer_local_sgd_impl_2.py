@@ -400,7 +400,7 @@ def train():
                 log_start_time = time.time()
                 log_avg_loss = 0
                 log_wc = 0
-            if is_sync:
+            if local_sgd > 1 and is_sync:
                 trainer.allreduce_states()
         if local_sgd > 1 and not is_sync:
             # synchronous model parameters for local sgd
