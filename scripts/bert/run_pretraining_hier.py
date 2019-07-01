@@ -207,6 +207,7 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx, sto
     
 
     logging.debug('Training started')
+    logging.info('Training started')
     while step_num < num_train_steps:
         for _, dataloader in enumerate(data_train):
             if step_num >= num_train_steps:
