@@ -86,6 +86,7 @@ parser.add_argument('--eval_use_npz', action='store_true',
                     help='Set to True if --data_eval provides npz files instead of raw text files')
 parser.add_argument('--optimizer', type=str, default='bertadam',
                     help='optimizer')
+parser.add_argument('--gpus', type=str, default='0', help='List of GPUs to use. e.g. 1,3')
 parser.add_argument('--kvstore', type=str, default='device', help='KVStore type')
 
 args = parser.parse_args()
