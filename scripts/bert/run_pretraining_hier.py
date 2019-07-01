@@ -332,7 +332,7 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx, sto
                             save_parameters(step_num, model, args.ckpt_dir)
                     if data_eval:
                         # eval data is always based on a fixed npz file.
-                        dataset_eval = get_pretrain_data_npz(data_eval, args.batch_size_eval, 1,
+                        dataset_eval = get_pretrain_data_npz(data_eval, args.batch_size_eval, len(ctx),
                                                              False, False, 1)
                         evaluate(dataset_eval, model, nsp_loss, mlm_loss, len(vocab), ctx,
                                  args.log_interval, args.dtype)
@@ -415,14 +415,14 @@ if __name__ == '__main__':
 
         num_parts = 1 if args.dummy_data_len else num_workers
         part_idx = 0 if args.dummy_data_len else rank
-        data_train = get_dataset_fn(args.data, args.batch_size, 1, True,
+        data_train = get_dataset_fn(args.data, args.batch_size, len(ctx), True,
                                     args.use_avg_len, args.num_buckets,
                                     num_parts=num_parts, part_idx=part_idx,
                                     prefetch=not args.dummy_data_len)
         train(data_train, data_eval, model, nsp_loss, mlm_loss, len(vocab), ctx, store)
     if data_eval:
         # eval data is always based on a fixed npz file.
-        dataset_eval = get_pretrain_data_npz(data_eval, args.batch_size_eval, 1,
+        dataset_eval = get_pretrain_data_npz(data_eval, args.batch_size_eval, len(ctx),
                                              False, False, 1)
         evaluate(dataset_eval, model, nsp_loss, mlm_loss, len(vocab), ctx,
                  args.log_interval, args.dtype)
