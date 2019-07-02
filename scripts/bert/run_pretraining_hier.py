@@ -96,6 +96,7 @@ args = parser.parse_args()
 level = logging.DEBUG if args.verbose else logging.INFO
 logging.getLogger().setLevel(level)
 logging.info(args)
+os.environ['MXNET_KVSTORE_USETREE'] = '1'
 os.environ['MXNET_GPU_MEM_POOL_TYPE'] = 'Round'
 
 try:
