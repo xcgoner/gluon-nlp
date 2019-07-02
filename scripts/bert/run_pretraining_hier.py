@@ -303,6 +303,9 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx, sto
                     # 3. averaging the gradients and apply updates
                     fp16_trainer.step(1, max_norm=1*num_workers)
 
+                    # debug
+                    mx.nd.waitall()
+
                 nsp_metric.update(ns_label_list, ns_pred_list)
                 mlm_metric.update(mask_label_list, mask_pred_list, mask_weight_list)
 
