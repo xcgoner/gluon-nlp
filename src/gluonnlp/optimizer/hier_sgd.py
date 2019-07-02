@@ -38,7 +38,7 @@ class DistributedHierTrainer(mx.gluon.Trainer):
         # _scale is used to check and set rescale_grad for optimizer in Trainer.step()
         # function. Normalizing it by Horovod size, which is equivalent to performing
         # average in allreduce, has better performance. 
-        # self._scale /= hvd.size()
+        self._scale /= hvd.size()
 
     def _allreduce_grads(self):
         # hierarchical allreduce, combining local kvstore and hvd
@@ -47,7 +47,7 @@ class DistributedHierTrainer(mx.gluon.Trainer):
                 self._kvstore.push(i, param.list_grad(), priority=-i)
                 # TODO(xcong) allreduce the buffer, avoid the extra copy in kvstore.pull
                 self._kvstore.pull(i, [param.list_grad()[0]], priority=-i)
-                hvd.allreduce(param.list_grad()[0], average=True, 
+                hvd.allreduce(param.list_grad()[0], average=False, 
                               name=str(i), priority=-i)
                 for j in range(1, len(param.list_grad())):
                     param.list_grad()[0].copyto(param.list_grad()[j])
