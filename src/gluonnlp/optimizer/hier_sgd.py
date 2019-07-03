@@ -39,16 +39,20 @@ class DistributedHierTrainer(mx.gluon.Trainer):
         # function. Normalizing it by Horovod size, which is equivalent to performing
         # average in allreduce, has better performance. 
         self._scale /= hvd.size()
+        self._allreduce_grads_counter = 0
 
     def _allreduce_grads(self):
         # hierarchical allreduce, combining local kvstore and hvd
+        if self._allreduce_grads_counter == 1000:
+            self._allreduce_grads_counter = 0
+        name_base = self._allreduce_grads_counter * len(self._params)
         for i, param in enumerate(self._params):
             if param.grad_req != 'null':
                 self._kvstore.push(i, param.list_grad(), priority=-i)
                 # TODO(xcong) allreduce the buffer, avoid the extra copy in kvstore.pull
                 self._kvstore.pull(i, [param.list_grad()[0]], priority=-i)
                 hvd.allreduce(param.list_grad()[0], average=False, 
-                              name=str(i), priority=-i)
+                              name=str(i + name_base), priority=-i)
                 for j in range(1, len(param.list_grad())):
                     param.list_grad()[0].copyto(param.list_grad()[j])
 
