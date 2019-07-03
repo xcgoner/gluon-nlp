@@ -51,16 +51,16 @@ class DistributedHierTrainer(mx.gluon.Trainer):
                 reduce_ind = i % len(param.list_grad())
                 self._kvstore.push(i, param.list_grad(), priority=-i)
                 # TODO(xcong) allreduce the buffer, avoid the extra copy in kvstore.pull
-                # self._kvstore.pull(i, [param.list_grad()[reduce_ind]], priority=-i)
+                self._kvstore.pull(i, [param.list_grad()[reduce_ind]], priority=-i)
                 # hvd.allreduce(param.list_grad()[0], average=False, 
                 #               name=str(i + name_base), priority=-i)
                 hvd.allreduce(param.list_grad()[reduce_ind], average=False, priority=-i)
-                # for j in range(len(param.list_grad())):
-                #     if j != reduce_ind:
-                #         param.list_grad()[reduce_ind].copyto(param.list_grad()[j])
+                for j in range(len(param.list_grad())):
+                    if j != reduce_ind:
+                        param.list_grad()[reduce_ind].copyto(param.list_grad()[j])
 
-                # debug
-                self._kvstore.pull(i, param.list_grad(), priority=-i)
+                # # debug
+                # self._kvstore.pull(i, param.list_grad(), priority=-i)
 
     def broadcast_params(self):
         """For each parameter, broadcast the parameters to different processes and contexts.
