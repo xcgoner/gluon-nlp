@@ -216,7 +216,7 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx, sto
 
             # create dummy data loader if needed
             if args.dummy_data_len:
-                target_shape = (args.batch_size*num_ctxes, args.dummy_data_len)
+                target_shape = (args.batch_size*num_ctxes / args.dummy_data_len, args.dummy_data_len)
                 dataloader = get_dummy_dataloader(dataloader, target_shape)
 
             for _, data_batch in enumerate(dataloader):
