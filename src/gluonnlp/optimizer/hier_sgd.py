@@ -51,7 +51,7 @@ class DistributedHierTrainer(mx.gluon.Trainer):
                 reduce_ind = i % len(param.list_grad())
                 self._kvstore.push(i, param.list_grad(), priority=-i)
                 # TODO(xcong) allreduce the buffer, avoid the extra copy in kvstore.pull
-                self._kvstore.pull(i, [param.list_grad()[reduce_ind]], priority=-i)
+                # self._kvstore.pull(i, [param.list_grad()[reduce_ind]], priority=-i)
                 # hvd.allreduce(param.list_grad()[0], average=False, 
                 #               name=str(i + name_base), priority=-i)
                 hvd.allreduce(param.list_grad()[reduce_ind], average=False, priority=-i)
