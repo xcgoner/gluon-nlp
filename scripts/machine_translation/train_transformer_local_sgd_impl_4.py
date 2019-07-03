@@ -143,6 +143,7 @@ parser.add_argument('--save_dir', type=str, default='transformer_out',
 parser.add_argument('--gpus', type=str,
                     help='list of gpus to run, e.g. 0 or 0,2,5. empty means using cpu.'
                          '(using single gpu is suggested)')
+parser.add_argument('--start_epoch', type=int, default=0, help='read from checkpoint')   
 args = parser.parse_args()
 logging_config(args.save_dir)
 logging.info(args)
@@ -322,7 +323,16 @@ def train():
     var_shifted = False
     var_warmup_rate = - math.log(math.pow(1. / len(ctx), var_decay)) / math.log(var_warmup)
 
-    for epoch_id in range(args.epochs):
+    if args.start_epoch > 0:
+        param_path = os.path.join(args.save_dir, 'epoch{:d}.params'.format(args.start_epoch-1))
+        logging.info('Loading parameters from %s', param_path)
+        nlp.utils.load_parameters(model, param_path, ctx=ctx)
+        state_path = os.path.join(args.save_dir, 'epoch{:d}.states'.format(args.start_epoch-1))
+        logging.info('Loading states from %s', state_path)
+        nlp.utils.load_states(trainer, state_path)
+        step_num = (len(train_data_loader) // grad_interval) * args.start_epoch
+
+    for epoch_id in range(args.start_epoch, args.epochs):
         log_avg_loss = 0
         log_wc = 0
         loss_denom = 0
@@ -458,8 +468,15 @@ def train():
             save_path = os.path.join(args.save_dir, 'valid_best.params')
             logging.info('Save best parameters to {}'.format(save_path))
             model.save_parameters(save_path)
-        save_path = os.path.join(args.save_dir, 'epoch{:d}.params'.format(epoch_id))
-        model.save_parameters(save_path)
+        # save_path = os.path.join(args.save_dir, 'epoch{:d}.params'.format(epoch_id))
+        # model.save_parameters(save_path)
+        param_save_path = os.path.join(args.save_dir, 'epoch{:d}.params'.format(epoch_id))
+        logging.info('Save current parameters to {}'.format(param_save_path))
+        nlp.utils.save_parameters(model, param_save_path)
+        states_save_path = os.path.join(args.save_dir, 'epoch{:d}.states'.format(epoch_id))
+        logging.info('Save current states to {}'.format(states_save_path))
+        nlp.utils.save_states(trainer, states_save_path)
+    
 
     save_path = os.path.join(args.save_dir, 'average.params')
     mx.nd.save(save_path, average_param_dict_list[0])
