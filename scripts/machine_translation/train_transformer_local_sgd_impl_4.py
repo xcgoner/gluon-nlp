@@ -353,7 +353,8 @@ def train():
                 new_local_sgd = 1
                 var_shifted = True
                 var_warmup_start_step = step_num
-                trainer.allreduce_states()
+                if args.start_epoch != epoch_id:
+                    trainer.allreduce_states()
             trainer._local_sgd = new_local_sgd
             local_sgd = new_local_sgd
 
@@ -422,8 +423,8 @@ def train():
                 log_start_time = time.time()
                 log_avg_loss = 0
                 log_wc = 0
-            if local_sgd > 1 and is_sync:
-                trainer.allreduce_states()
+            # if local_sgd > 1 and is_sync:
+            #     trainer.allreduce_states()
         if local_sgd > 1 and not is_sync:
             # synchronous model parameters for local sgd
             trainer.allreduce_params()

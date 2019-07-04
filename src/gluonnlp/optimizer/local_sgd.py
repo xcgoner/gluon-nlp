@@ -407,8 +407,8 @@ class LocalSGDTrainer(object):
                 self._local_sgd_counter = 0
                 # synchronization
                 self._allreduce_params()
-                # if self._is_states_initialized:
-                #     self._allreduce_states()
+                if self._is_states_initialized:
+                    self._allreduce_states()
                 # indicate that the parameters are synchronized in the current iteration
                 return True
             return False
