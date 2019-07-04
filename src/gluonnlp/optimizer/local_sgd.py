@@ -439,6 +439,7 @@ class LocalSGDTrainer(object):
         self._allreduce_grads()
 
     def _allreduce_grads(self):
+        print("_allreduce_grads")
         if self._kvstore:
             for i, param in enumerate(self._params):
                 if param.grad_req != 'null':
@@ -467,6 +468,7 @@ class LocalSGDTrainer(object):
         self._allreduce_params()
 
     def _allreduce_params(self):
+        print("_allreduce_params")
         if self._kvstore:
             for i, param in enumerate(self._params):
                 if param.grad_req != 'null':
@@ -500,6 +502,7 @@ class LocalSGDTrainer(object):
         self._allreduce_states()
 
     def _allreduce_states(self):
+        print("_allreduce_states")
         if self._kvstore:
             # for i, param in enumerate(self._params):
             for i, param in reversed(list(enumerate(self._params))):
