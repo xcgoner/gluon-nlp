@@ -370,7 +370,8 @@ def train():
                 new_lr = args.lr / math.sqrt(args.num_units) \
                          * min(1. / math.sqrt(step_num), step_num * warmup_steps ** (-1.5)) 
                 if var_shifted:
-                    new_lr *= min(1, math.pow((step_num - var_warmup_start_step)*1.0/var_warmup, var_warmup_rate))
+                    # new_lr *= min(1, math.pow((step_num - var_warmup_start_step)*1.0/var_warmup, var_warmup_rate))
+                    new_lr *= min(1, 1. / len(ctx) + (1. - 1. / len(ctx)) * (step_num - var_warmup_start_step) / var_warmup)
                 trainer.set_learning_rate(new_lr)
             src_wc, tgt_wc, bs = np.sum([(shard[2].sum(), shard[3].sum(), shard[0].shape[0])
                                             for shard in seqs], axis=0)
@@ -404,9 +405,9 @@ def train():
                         for i in range(len(ctx)):
                             for name, average_param in average_param_dict_list[i].items():
                                 average_param[:] += alpha * (param_dict[name].data(ctx[i]) - average_param)
-            # step_loss += sum([L.asscalar() for L in Ls])
-            for L in Ls:
-                step_loss += L.as_in_context(mx.cpu())
+            step_loss += sum([L.asscalar() for L in Ls])
+            # for L in Ls:
+            #     step_loss += L.as_in_context(mx.cpu())
             if batch_id % grad_interval == grad_interval - 1 or\
                     batch_id == len(train_data_loader) - 1:
                 log_avg_loss += step_loss / loss_denom * args.batch_size * 100.0
@@ -418,8 +419,8 @@ def train():
                 logging.info('[Epoch {} Batch {}/{}] loss={:.4f}, ppl={:.4f}, '
                              'throughput={:.2f}K wps, wc={:.2f}K, lr={:.8f}'
                              .format(epoch_id, batch_id + 1, len(train_data_loader),
-                                     log_avg_loss.asscalar() / args.log_interval,
-                                     np.exp(log_avg_loss.asscalar() / args.log_interval),
+                                     log_avg_loss / args.log_interval,
+                                     np.exp(log_avg_loss / args.log_interval),
                                      wps / 1000, log_wc / 1000, new_lr))
                 log_start_time = time.time()
                 log_avg_loss = 0
