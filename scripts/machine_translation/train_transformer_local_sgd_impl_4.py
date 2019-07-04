@@ -331,7 +331,7 @@ def train():
         logging.info('Loading states from %s', state_path)
         nlp.utils.load_states(trainer, state_path)
         step_num = (len(train_data_loader) // grad_interval) * args.start_epoch
-        trainer._is_states_initialized = True
+        trainer.init_states()
 
     for epoch_id in range(args.start_epoch, args.epochs):
         log_avg_loss = 0
