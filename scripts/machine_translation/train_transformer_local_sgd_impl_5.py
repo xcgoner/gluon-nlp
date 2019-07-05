@@ -327,7 +327,7 @@ def train():
         nlp.utils.load_states(trainer, state_path)
         step_num = (len(train_data_loader) // grad_interval) * args.start_epoch
 
-    for epoch_id in range(args.epochs):
+    for epoch_id in range(args.start_epoch, args.epochs):
         log_avg_loss = 0
         log_wc = 0
         loss_denom = 0
@@ -335,13 +335,10 @@ def train():
         log_start_time = time.time()
         epoch_start_time = time.time()
 
-        print(local_sgd_epochs)
 
         if local_sgd_epochs is not None and epoch_id in local_sgd_epochs:
             new_local_sgd = local_sgd_schedule[local_sgd_epochs.index(epoch_id)]
-            print(new_local_sgd)
             if new_local_sgd <= 1:
-                print("switch full sync")
                 new_local_sgd = 1
                 var_shifted = True
                 var_warmup_start_step = step_num
@@ -364,9 +361,6 @@ def train():
                 step_num += 1
                 new_lr = args.lr / math.sqrt(args.num_units) \
                          * min(1. / math.sqrt(step_num), step_num * warmup_steps ** (-1.5))
-                # debug
-                print(var_shifted)
-                print(local_sgd)
                 trainer.set_learning_rate(new_lr)
             src_wc, tgt_wc, bs = np.sum([(shard[2].sum(), shard[3].sum(), shard[0].shape[0])
                                          for shard in seqs], axis=0)
