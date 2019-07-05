@@ -188,7 +188,7 @@ model = NMTModel(src_vocab=src_vocab, tgt_vocab=tgt_vocab, encoder=encoder, deco
 model.initialize(init=mx.init.Xavier(magnitude=args.magnitude), ctx=ctx)
 static_alloc = True
 model.hybridize(static_alloc=static_alloc)
-logging.info(model)
+# logging.info(model)
 
 translator = BeamSearchTranslator(model=model, beam_size=args.beam_size,
                                   scorer=nlp.model.BeamSearchScorer(alpha=args.lp_alpha,
