@@ -263,7 +263,7 @@ def evaluate(data_loader, context=ctx[0]):
 
 def train():
     """Training function."""
-    trainer = gluon.LocalSGDTrainerV2(model.collect_params(), args.optimizer,
+    trainer = LocalSGDTrainerV2(model.collect_params(), args.optimizer,
                             {'learning_rate': args.lr, 'beta2': 0.98, 'epsilon': 1e-9})
 
     train_data_loader, val_data_loader, test_data_loader \
