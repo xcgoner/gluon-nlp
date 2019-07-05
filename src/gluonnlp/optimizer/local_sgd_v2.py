@@ -152,9 +152,11 @@ class LocalSGDTrainerV2(mx.gluon.Trainer):
                         self._kvstore.init(i+len(self._params), self._updaters[0].states[i])
             self._is_states_initialized = True
 
-    def set_var_zero(self):
+    def reset_var(self):
         """Set var to zero for adam 
         """
+        print("reset_var")
+        num_ctx = len(self._updaters)
         for i, param in reversed(list(enumerate(self._params))):
             if param.grad_req != 'null':
                 if isinstance(self._updaters[0].states[i], (tuple, list)):
@@ -162,7 +164,9 @@ class LocalSGDTrainerV2(mx.gluon.Trainer):
                     for j in range(len(self._updaters[0].states[i])):
                         if j == 1:
                             # only for var
-                            updater.states[i][j] *= 0
+                            for updater in self._updaters:
+                                # updater.states[i][j] *= 0
+                                updater.states[i][j] /= num_ctx
 
     def step(self, batch_size, ignore_stale_grad=False):
         """Makes one step of parameter update. Should be called after
