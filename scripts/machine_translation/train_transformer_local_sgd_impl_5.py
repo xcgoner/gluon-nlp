@@ -335,8 +335,11 @@ def train():
         log_start_time = time.time()
         epoch_start_time = time.time()
 
+        print(local_sgd_epochs)
+
         if local_sgd_epochs is not None and epoch_id in local_sgd_epochs:
             new_local_sgd = local_sgd_schedule[local_sgd_epochs.index(epoch_id)]
+            print(new_local_sgd)
             if new_local_sgd <= 1:
                 print("switch full sync")
                 new_local_sgd = 1
