@@ -286,7 +286,7 @@ def train():
 
     trainer = LocalSGDTrainerV2(model.collect_params(), args.optimizer,
                             {'learning_rate': args.lr, 'beta2': 0.98, 'epsilon': 1e-9},
-                            , local_sgd=local_sgd, local_sgd_regularization=args.local_sgd_regularization, 
+                            local_sgd=local_sgd, local_sgd_regularization=args.local_sgd_regularization, 
                             local_sgd_regularization_interval=args.local_sgd_regularization_interval)
 
     train_data_loader, val_data_loader, test_data_loader \
