@@ -144,6 +144,8 @@ parser.add_argument('--local_sgd_regularization', type=float, default=0, help='t
 parser.add_argument('--local_sgd_regularization_interval', type=int, default=0, help='the interval of regularization of local SGD')
 parser.add_argument('--var_warmup', type=int, default=1000, help='re-warmup when return to sync sgd')
 parser.add_argument('--start_epoch', type=int, default=0, help='read from checkpoint') 
+parser.add_argument('--save_checkpoint', action='store_true',
+                    help='Save checkpoint for each epoch')
 
 args = parser.parse_args()
 logging_config(args.save_dir)
@@ -455,12 +457,13 @@ def train():
             model.save_parameters(save_path)
         # save_path = os.path.join(args.save_dir, 'epoch{:d}.params'.format(epoch_id))
         # model.save_parameters(save_path)
-        param_save_path = os.path.join(args.save_dir, 'epoch{:d}.params'.format(epoch_id))
-        logging.info('Save current parameters to {}'.format(param_save_path))
-        nlp.utils.save_parameters(model, param_save_path)
-        states_save_path = os.path.join(args.save_dir, 'epoch{:d}.states'.format(epoch_id))
-        logging.info('Save current states to {}'.format(states_save_path))
-        nlp.utils.save_states(trainer, states_save_path)
+        if args.save_checkpoint:
+            param_save_path = os.path.join(args.save_dir, 'epoch{:d}.params'.format(epoch_id))
+            logging.info('Save current parameters to {}'.format(param_save_path))
+            nlp.utils.save_parameters(model, param_save_path)
+            states_save_path = os.path.join(args.save_dir, 'epoch{:d}.states'.format(epoch_id))
+            logging.info('Save current states to {}'.format(states_save_path))
+            nlp.utils.save_states(trainer, states_save_path)
 
     save_path = os.path.join(args.save_dir, 'average.params')
     mx.nd.save(save_path, average_param_dict_list[0])
