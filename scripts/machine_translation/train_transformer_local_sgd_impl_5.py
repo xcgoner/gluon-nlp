@@ -326,7 +326,9 @@ def train():
                     alpha = 1. / max(1, step_num - average_start)
                     for name, average_param in average_param_dict.items():
                         average_param[:] += alpha * (param_dict[name].data(ctx[0]) - average_param)
-            step_loss += sum([L.asscalar() for L in Ls])
+            # step_loss += sum([L.asscalar() for L in Ls])
+            for L in Ls:
+                step_loss += L.as_in_context(mx.cpu())
             if batch_id % grad_interval == grad_interval - 1 or\
                     batch_id == len(train_data_loader) - 1:
                 log_avg_loss += step_loss / loss_denom * args.batch_size * 100.0
@@ -335,11 +337,12 @@ def train():
             log_wc += src_wc + tgt_wc
             if (batch_id + 1) % (args.log_interval * grad_interval) == 0:
                 wps = log_wc / (time.time() - log_start_time)
+                log_avg_loss_scalar = log_avg_loss.asscalar()
                 logging.info('[Epoch {} Batch {}/{}] loss={:.4f}, ppl={:.4f}, '
                              'throughput={:.2f}K wps, wc={:.2f}K'
                              .format(epoch_id, batch_id + 1, len(train_data_loader),
-                                     log_avg_loss / args.log_interval,
-                                     np.exp(log_avg_loss / args.log_interval),
+                                     log_avg_loss_scalar / args.log_interval,
+                                     np.exp(log_avg_loss_scalar / args.log_interval),
                                      wps / 1000, log_wc / 1000))
                 log_start_time = time.time()
                 log_avg_loss = 0
