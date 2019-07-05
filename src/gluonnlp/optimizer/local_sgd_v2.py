@@ -152,6 +152,18 @@ class LocalSGDTrainerV2(mx.gluon.Trainer):
                         self._kvstore.init(i+len(self._params), self._updaters[0].states[i])
             self._is_states_initialized = True
 
+    def set_var_zero(self):
+        """Set var to zero for adam 
+        """
+        for i, param in reversed(list(enumerate(self._params))):
+            if param.grad_req != 'null':
+                if isinstance(self._updaters[0].states[i], (tuple, list)):
+                    # for some optimizers, there are multiple states (mean, variance), such as Adam
+                    for j in range(len(self._updaters[0].states[i])):
+                        if j == 1:
+                            # only for var
+                            updater.states[i][j] *= 0
+
     def step(self, batch_size, ignore_stale_grad=False):
         """Makes one step of parameter update. Should be called after
         `autograd.backward()` and outside of `record()` scope.
