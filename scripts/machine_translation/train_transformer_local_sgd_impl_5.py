@@ -338,6 +338,7 @@ def train():
         if local_sgd_epochs is not None and epoch_id in local_sgd_epochs:
             new_local_sgd = local_sgd_schedule[local_sgd_epochs.index(epoch_id)]
             if new_local_sgd <= 1:
+                print("switch full sync")
                 new_local_sgd = 1
                 var_shifted = True
                 var_warmup_start_step = step_num
@@ -362,6 +363,7 @@ def train():
                          * min(1. / math.sqrt(step_num), step_num * warmup_steps ** (-1.5))
                 # debug
                 print(var_shifted)
+                print(local_sgd)
                 trainer.set_learning_rate(new_lr)
             src_wc, tgt_wc, bs = np.sum([(shard[2].sum(), shard[3].sum(), shard[0].shape[0])
                                          for shard in seqs], axis=0)
