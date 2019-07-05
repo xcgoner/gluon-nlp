@@ -166,7 +166,8 @@ class LocalSGDTrainerV2(mx.gluon.Trainer):
                             # only for var
                             for updater in self._updaters:
                                 # updater.states[i][j] *= 0
-                                updater.states[i][j] /= num_ctx
+                                state = updater.states[i][j]
+                                state /= num_ctx
 
     def step(self, batch_size, ignore_stale_grad=False):
         """Makes one step of parameter update. Should be called after
