@@ -362,7 +362,9 @@ def train():
                 new_lr = args.lr / math.sqrt(args.num_units) \
                          * min(1. / math.sqrt(step_num), step_num * warmup_steps ** (-1.5))
                 if var_shifted:
-                    new_lr *= min(1, 1. / len(ctx) + (1. - 1. / len(ctx)) * (step_num - var_warmup_start_step) / var_warmup)
+                    new_lr = args.lr / math.sqrt(args.num_units) \
+                                * min( 1. / math.sqrt(step_num), 1. / math.sqrt(var_warmup_start_step) / len(ctx) )
+                    # new_lr *= min(1, 1. / len(ctx) + (1. - 1. / len(ctx)) * (step_num - var_warmup_start_step) / var_warmup)
                 trainer.set_learning_rate(new_lr)
             src_wc, tgt_wc, bs = np.sum([(shard[2].sum(), shard[3].sum(), shard[0].shape[0])
                                          for shard in seqs], axis=0)
