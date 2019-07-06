@@ -26,6 +26,7 @@ from mxnet.gluon.parameter import ParameterDict, Parameter
 import mxnet as mx
 import types
 import warnings
+import math
 
 class LocalSGDTrainerV2(mx.gluon.Trainer):
     def __init__(self, params, optimizer, optimizer_params=None, kvstore='device', 
