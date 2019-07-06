@@ -168,6 +168,22 @@ class LocalSGDTrainerV2(mx.gluon.Trainer):
                         state /= num_ctx
                         # state *= 0
 
+    def reset_mean(self):
+        """Set mean to zero for adam 
+        """
+        print("reset_var")
+        num_ctx = len(self._updaters)
+        for i, param in reversed(list(enumerate(self._params))):
+            if param.grad_req != 'null':
+                if isinstance(self._updaters[0].states[i], (tuple, list)):
+                    # for some optimizers, there are multiple states (mean, variance), such as Adam
+                    # only for var
+                    for updater in self._updaters:
+                        # updater.states[i][j] *= 0
+                        state = updater.states[i][0]
+                        state /= math.sqrt(num_ctx)
+                        # state *= 0
+
     def print_var_sum(self):
         """Set var to zero for adam 
         """
