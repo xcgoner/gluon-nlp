@@ -181,7 +181,7 @@ class LocalSGDTrainerV2(mx.gluon.Trainer):
                     var_sum_list.append(mx.nd.sum(self._updaters[0].states[i][1]))
         mx.nd.waitall()
         var_sum_scalars = [var_sum.asscalar() for var_sum in var_sum_list]
-        print(vvar_sum_scalars)
+        print(var_sum_scalars)
 
 
     def step(self, batch_size, ignore_stale_grad=False):
