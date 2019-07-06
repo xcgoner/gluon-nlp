@@ -161,14 +161,28 @@ class LocalSGDTrainerV2(mx.gluon.Trainer):
             if param.grad_req != 'null':
                 if isinstance(self._updaters[0].states[i], (tuple, list)):
                     # for some optimizers, there are multiple states (mean, variance), such as Adam
-                    for j in range(len(self._updaters[0].states[i])):
-                        if j == 1:
-                            # only for var
-                            for updater in self._updaters:
-                                # updater.states[i][j] *= 0
-                                state = updater.states[i][j]
-                                state /= num_ctx
-                                # state *= 0
+                    # only for var
+                    for updater in self._updaters:
+                        # updater.states[i][j] *= 0
+                        state = updater.states[i][1]
+                        state /= num_ctx
+                        # state *= 0
+
+    def print_var_sum(self):
+        """Set var to zero for adam 
+        """
+        print("print_var_sum")
+        var_sum_list = []
+        for i, param in enumerate(self._params):
+            if param.grad_req != 'null':
+                if isinstance(self._updaters[0].states[i], (tuple, list)):
+                    # for some optimizers, there are multiple states (mean, variance), such as Adam
+                    # only for var
+                    var_sum_list.append(mx.nd.sum(self._updaters[0].states[i][1]))
+        mx.nd.waitall()
+        var_sum_scalars = [var_sum.asscalar() for var_sum in var_sum_list]
+        print(vvar_sum_scalars)
+
 
     def step(self, batch_size, ignore_stale_grad=False):
         """Makes one step of parameter update. Should be called after

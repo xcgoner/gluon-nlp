@@ -146,6 +146,8 @@ parser.add_argument('--var_warmup', type=int, default=1000, help='re-warmup when
 parser.add_argument('--start_epoch', type=int, default=0, help='read from checkpoint') 
 parser.add_argument('--save_checkpoint', action='store_true',
                     help='Save checkpoint for each epoch')
+parser.add_argument('--log_var_sum', action='store_true',
+                    help='print the scale of the var')
 
 args = parser.parse_args()
 logging_config(args.save_dir)
@@ -425,6 +427,8 @@ def train():
             trainer.allreduce_states()
         mx.nd.waitall()
         logging.info('[Epoch {}] time={:.2f}s'.format(epoch_id, time.time()-epoch_start_time))
+        if args.log_var_sum:
+            trainer.print_var_sum()
         if epoch_id >= 5:
             valid_loss, valid_translation_out = evaluate(val_data_loader, ctx[0])
             valid_bleu_score, _, _, _, _ = compute_bleu([val_tgt_sentences], valid_translation_out,
