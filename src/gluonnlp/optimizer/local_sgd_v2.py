@@ -185,20 +185,20 @@ class LocalSGDTrainerV2(mx.gluon.Trainer):
                         state /= math.sqrt(num_ctx)
                         # state *= 0
 
-    def print_var_sum(self):
+    def print_var_mean(self):
         """Set var to zero for adam 
         """
-        print("print_var_sum")
-        var_sum_list = []
+        print("print_var_mean")
+        var_mean_list = []
         for i, param in enumerate(self._params):
             if param.grad_req != 'null':
                 if isinstance(self._updaters[0].states[i], (tuple, list)):
                     # for some optimizers, there are multiple states (mean, variance), such as Adam
                     # only for var
-                    var_sum_list.append(mx.nd.sum(self._updaters[0].states[i][1]))
+                    var_mean_list.append(mx.nd.mean(self._updaters[0].states[i][1]))
         mx.nd.waitall()
-        var_sum_scalars = [var_sum.asscalar() for var_sum in var_sum_list]
-        print(var_sum_scalars)
+        var_mean_scalars = [var_mean.asscalar() for var_mean in var_mean_list]
+        print(var_mean_scalars)
 
 
     def step(self, batch_size, ignore_stale_grad=False):
