@@ -489,7 +489,8 @@ def train():
         for i in range(len(ctx)):
             for name, average_param in average_param_dict_list[i].items():
                 param_dict[name].data(ctx[i])[:] = average_param
-        trainer.allreduce_params()
+        if local_sgd > 1:
+            trainer.allreduce_params()
         mx.nd.waitall()
         save_path = os.path.join(args.save_dir, 'average.params')
         model.save_parameters(save_path)
