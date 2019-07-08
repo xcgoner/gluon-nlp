@@ -47,6 +47,8 @@ from pretraining_utils import save_parameters, save_states
 parser = get_argparser()
 parser.add_argument('--gpus', type=str, default='0', help='List of GPUs to use. e.g. 1,3')
 parser.add_argument('--kvstore', type=str, default='device', help='KVStore type')
+parser.add_argument('--optimizer', type=str, default='bertadam',
+                    help='optimizer')
 args = parser.parse_args()
 
 os.environ['MXNET_KVSTORE_USETREE'] = '1'
@@ -100,7 +102,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
     if args.dtype == 'float16':
         optim_params['multi_precision'] = True
 
-    trainer = mx.gluon.Trainer(model.collect_params(), 'bertadam', optim_params,
+    trainer = mx.gluon.Trainer(model.collect_params(), args.optimizer, optim_params,
                                update_on_kvstore=False, kvstore=store)
     dynamic_loss_scale = args.dtype == 'float16'
     fp16_trainer = FP16Trainer(trainer, dynamic_loss_scale=dynamic_loss_scale)
