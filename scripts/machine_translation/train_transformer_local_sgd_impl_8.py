@@ -350,7 +350,7 @@ def train():
                 var_warmup_start_step = step_num
                 # reset var for adam
                 trainer.reset_var()
-                # trainer.reset_mean()
+                trainer.reset_mean()
                 if args.start_epoch != epoch_id:
                     if not trainer._is_states_initialized:
                         trainer.init_states()
