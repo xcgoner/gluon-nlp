@@ -167,7 +167,7 @@ class LocalSGDTrainerV2(mx.gluon.Trainer):
                         # updater.states[i][j] *= 0
                         state = updater.states[i][1]
                         # state /= num_ctx
-                        state /= 4
+                        state /= 2
                         # state *= 0
 
     def reset_mean(self):
