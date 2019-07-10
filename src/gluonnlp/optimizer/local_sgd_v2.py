@@ -184,7 +184,7 @@ class LocalSGDTrainerV2(mx.gluon.Trainer):
                         # updater.states[i][j] *= 0
                         state = updater.states[i][0]
                         # state /= math.sqrt(num_ctx)
-                        state *= 1
+                        state *= factor
                         # state *= 0
 
     def print_var_mean(self):
