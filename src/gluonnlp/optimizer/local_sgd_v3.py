@@ -203,7 +203,7 @@ class LocalSGDTrainerV3(mx.gluon.Trainer):
         print(var_mean_scalars)
 
 
-    def step(self, batch_size, ignore_stale_grad=False):
+    def step(self, batch_size, mixing_weights=None, ignore_stale_grad=False):
         """Makes one step of parameter update. Should be called after
         `autograd.backward()` and outside of `record()` scope.
 
@@ -247,14 +247,14 @@ class LocalSGDTrainerV3(mx.gluon.Trainer):
         if self._local_sgd > 1 and self._local_sgd_regularization > 0:
             # regularization for local sgd
             # TODO(xcong): use param.name instead of the indices
-            mixing_weight = (1 - self._local_sgd_regularization)
+            mixing_weights = (1 - self._local_sgd_regularization)
             self._local_sgd_regularization_counter += 1
             if self._local_sgd_regularization_interval == 0 or self._local_sgd_regularization_interval == self._local_sgd_regularization_counter:
                 self._local_sgd_regularization_counter = 0
                 for i, param in enumerate(self._params):
                     if param.grad_req != 'null' and param._stype == 'default':
                         for j, data in enumerate(param.list_data()):
-                            data *= mixing_weight
+                            data *= mixing_weights
                             data += self._local_sgd_regularization_params[i][j]
 
         if self._local_sgd > 1:
@@ -263,15 +263,15 @@ class LocalSGDTrainerV3(mx.gluon.Trainer):
             if self._local_sgd_counter == self._local_sgd:
                 self._local_sgd_counter = 0
                 # synchronization
-                self._allreduce_params()
+                self._allreduce_params(mixing_weights)
                 if self._is_states_initialized:
-                    self._allreduce_states()
+                    self._allreduce_states(mixing_weights)
                 # indicate that the parameters are synchronized in the current iteration
                 return True
             return False
         return True
 
-    def allreduce_params(self, mixing_weight=None):
+    def allreduce_params(self, mixing_weights=None):
         """For each parameter, reduce the gradients from different contexts.
 
         Should be called after `autograd.backward()`, outside of `record()` scope,
@@ -287,17 +287,17 @@ class LocalSGDTrainerV3(mx.gluon.Trainer):
         if self._params_to_init:
             self._init_params()
         
-        self._allreduce_params(mixing_weight)
+        self._allreduce_params(mixing_weights)
 
-    def _allreduce_params(self, mixing_weight=None):
+    def _allreduce_params(self, mixing_weights=None):
         # print("_allreduce_params")
         num_ctx = len(self._updaters)
-        if mixing_weight is None:
-            mixing_weight = [1. / num_ctx for _ in range(num_ctx)]
+        if mixing_weights is None:
+            mixing_weights = [1. / num_ctx for _ in range(num_ctx)]
         if self._kvstore:
             for i, param in enumerate(self._params):
                 if param.grad_req != 'null':
-                    for alpha, data in zip(mixing_weight, param.list_data()):
+                    for alpha, data in zip(mixing_weights, param.list_data()):
                         data *= alpha
                     self._kvstore.push(i, param.list_data(), priority=-i)
                     if param._stype == 'default':
@@ -305,7 +305,7 @@ class LocalSGDTrainerV3(mx.gluon.Trainer):
                     else:
                         raise ValueError("Cannot pull row_sparse parameters for local SGD")
 
-    def allreduce_states(self):
+    def allreduce_states(self, mixing_weights=None):
         """For each parameter, reduce the gradients from different contexts.
 
         Should be called after `autograd.backward()`, outside of `record()` scope,
@@ -321,11 +321,14 @@ class LocalSGDTrainerV3(mx.gluon.Trainer):
         
         if not self._is_states_initialized:
             raise ValueError("States are not initiallized")
-        self._allreduce_states()
+        self._allreduce_states(mixing_weights)
 
-    def _allreduce_states(self):
+    def _allreduce_states(self, mixing_weights=None):
         # print("_allreduce_states")
         if self._kvstore:
+            num_ctx = len(self._updaters)
+            if mixing_weights is None:
+                mixing_weights = [1. / num_ctx for _ in range(num_ctx)]
             # for i, param in enumerate(self._params):
             for i, param in reversed(list(enumerate(self._params))):
                 if param.grad_req != 'null':
@@ -333,29 +336,23 @@ class LocalSGDTrainerV3(mx.gluon.Trainer):
                         # for some optimizers, there are multiple states (mean, variance), such as Adam
                         for j in range(len(self._updaters[0].states[i])):
                             state_arrays = [updater.states[i][j] for updater in self._updaters]
+                            for alpha, state in zip(mixing_weights, state_arrays):
+                                state *= alpha
                             idx = i+len(self._params)*(j+1)
                             self._kvstore.push(idx, state_arrays, priority=i-len(self._params)*2)
                             if param._stype == 'default':
                                 self._kvstore.pull(idx, state_arrays, priority=i-len(self._params)*2)
-                                # take average
-                                # assume that every worker has the same number of gpus/contexts
-                                num_workers = float(self._kvstore.num_workers * len(state_arrays))
-                                for state in state_arrays:
-                                    state /= num_workers
 
                             else:
                                 raise ValueError("Cannot pull row_sparse parameters for local SGD")
                     else:
                         state_arrays = [updater.states[i] for updater in self._updaters]
+                        for alpha, state in zip(mixing_weights, state_arrays):
+                            state *= alpha
                         idx = i+len(self._params)
                         self._kvstore.push(idx, state_arrays, priority=i-len(self._params)*2)
                         if param._stype == 'default':
                             self._kvstore.pull(idx, state_arrays, priority=i-len(self._params)*2)
-                            # take average
-                            # assume that every worker has the same number of gpus/contexts
-                            num_workers = self._kvstore.num_workers * len(state_arrays)
-                            for state in state_arrays:
-                                state /= num_workers
                         else:
                             raise ValueError("Cannot pull row_sparse parameters for local SGD")
 
