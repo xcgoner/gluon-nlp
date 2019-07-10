@@ -150,6 +150,7 @@ parser.add_argument('--log_var_mean', action='store_true',
 parser.add_argument('--reset_var_factor', type=float, default=20, help='rescale var, after reset')
 parser.add_argument('--reset_mean_factor', type=float, default=1, help='rescale mean, after reset')
 parser.add_argument('--lr_rescale', type=float, default=1, help='rescale the lr, after reset')
+parser.add_argument('--lr_rescale_warmup', type=int, default=0, help='warmup step after rescale the lr, after reset')
 
 
 args = parser.parse_args()
@@ -350,6 +351,11 @@ def train():
                 # reset var for adam
                 trainer.reset_var(args.reset_var_factor)
                 trainer.reset_mean(args.reset_mean_factor)
+                lr_rescale = args.lr_rescale
+                if args.lr_rescale_warmup > 0:
+                    lr_rescale_warmup_rate = (1. - lr_rescale) / args.lr_rescale_warmup
+                else:
+                    lr_rescale_warmup_rate = 0
                 if args.start_epoch != epoch_id:
                     if not trainer._is_states_initialized:
                         trainer.init_states()
@@ -368,7 +374,9 @@ def train():
                 new_lr = args.lr / math.sqrt(args.num_units) \
                          * min(1. / math.sqrt(step_num), step_num * warmup_steps ** (-1.5))
                 if var_shifted:
-                    new_lr *= args.lr_rescale
+                    new_lr *= lr_rescale
+                    lr_rescale += lr_rescale_warmup_rate
+                    lr_rescale = min(1., lr_rescale)
                 trainer.set_learning_rate(new_lr)
             src_wc, tgt_wc, bs = np.sum([(shard[2].sum(), shard[3].sum(), shard[0].shape[0])
                                          for shard in seqs], axis=0)
