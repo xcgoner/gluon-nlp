@@ -149,6 +149,7 @@ parser.add_argument('--log_var_mean', action='store_true',
                     help='print the scale of the var')
 parser.add_argument('--reset_var_factor', type=float, default=20, help='rescale var, after reset')
 parser.add_argument('--reset_mean_factor', type=float, default=1, help='rescale mean, after reset')
+parser.add_argument('--lr_rescale', type=float, default=1, help='rescale the lr, after reset')
 
 
 args = parser.parse_args()
@@ -366,6 +367,8 @@ def train():
                 step_num += 1
                 new_lr = args.lr / math.sqrt(args.num_units) \
                          * min(1. / math.sqrt(step_num), step_num * warmup_steps ** (-1.5))
+                if var_shifted:
+                    new_lr *= args.lr_rescale
                 trainer.set_learning_rate(new_lr)
             src_wc, tgt_wc, bs = np.sum([(shard[2].sum(), shard[3].sum(), shard[0].shape[0])
                                          for shard in seqs], axis=0)
