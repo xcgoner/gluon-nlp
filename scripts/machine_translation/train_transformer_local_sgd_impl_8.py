@@ -142,13 +142,13 @@ parser.add_argument('--local_sgd_epochs', type=str, default=None, help='the epoc
 parser.add_argument('--local_sgd_schedule', type=str, default=None, help='the schedule of local SGD')
 parser.add_argument('--local_sgd_regularization', type=float, default=0, help='the regularization weight of local SGD')
 parser.add_argument('--local_sgd_regularization_interval', type=int, default=0, help='the interval of regularization of local SGD')
-parser.add_argument('--var_warmup', type=int, default=1000, help='re-warmup when return to sync sgd')
 parser.add_argument('--start_epoch', type=int, default=0, help='read from checkpoint') 
 parser.add_argument('--save_checkpoint', action='store_true',
                     help='Save checkpoint for each epoch')
 parser.add_argument('--log_var_mean', action='store_true',
                     help='print the scale of the var')
-parser.add_argument('--lr_decay', type=float, default=8, help='decay of lr, after switching to fully sync')
+parser.add_argument('--reset_var_factor', type=float, default=20, help='rescale var, after reset')
+parser.add_argument('--reset_mean_factor', type=float, default=1, help='rescale mean, after reset')
 
 
 args = parser.parse_args()
@@ -321,7 +321,6 @@ def train():
     parallel = Parallel(num_ctxs, parallel_model)
 
     average_counter = 0
-    var_warmup = args.var_warmup
     var_shifted = False
 
     if args.start_epoch > 0:
@@ -347,10 +346,9 @@ def train():
             if new_local_sgd <= 1:
                 new_local_sgd = 1
                 var_shifted = True
-                var_warmup_start_step = step_num
                 # reset var for adam
-                trainer.reset_var()
-                # trainer.reset_mean()
+                trainer.reset_var(args.reset_var_factor)
+                trainer.reset_mean(args.reset_mean_factor)
                 if args.start_epoch != epoch_id:
                     if not trainer._is_states_initialized:
                         trainer.init_states()
@@ -368,10 +366,6 @@ def train():
                 step_num += 1
                 new_lr = args.lr / math.sqrt(args.num_units) \
                          * min(1. / math.sqrt(step_num), step_num * warmup_steps ** (-1.5))
-                # if var_shifted:
-                #     new_lr = args.lr / math.sqrt(args.num_units) \
-                #                 * min( 1. / math.sqrt(step_num), 1. / math.sqrt(var_warmup_start_step) / args.lr_decay )
-                    # new_lr *= min(1, 1. / len(ctx) + (1. - 1. / len(ctx)) * (step_num - var_warmup_start_step) / var_warmup)
                 trainer.set_learning_rate(new_lr)
             src_wc, tgt_wc, bs = np.sum([(shard[2].sum(), shard[3].sum(), shard[0].shape[0])
                                          for shard in seqs], axis=0)

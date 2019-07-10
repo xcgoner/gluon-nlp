@@ -153,7 +153,7 @@ class LocalSGDTrainerV2(mx.gluon.Trainer):
                         self._kvstore.init(i+len(self._params), self._updaters[0].states[i])
             self._is_states_initialized = True
 
-    def reset_var(self):
+    def reset_var(self, factor=20):
         """Set var to zero for adam 
         """
         print("reset_var")
@@ -167,10 +167,10 @@ class LocalSGDTrainerV2(mx.gluon.Trainer):
                         # updater.states[i][j] *= 0
                         state = updater.states[i][1]
                         # state /= num_ctx
-                        state *= 20
+                        state *= factor
                         # state *= 0
 
-    def reset_mean(self):
+    def reset_mean(self, factor=1):
         """Set mean to zero for adam 
         """
         print("reset_var")
@@ -184,7 +184,7 @@ class LocalSGDTrainerV2(mx.gluon.Trainer):
                         # updater.states[i][j] *= 0
                         state = updater.states[i][0]
                         # state /= math.sqrt(num_ctx)
-                        state /= 2
+                        state *= 1
                         # state *= 0
 
     def print_var_mean(self):
