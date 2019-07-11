@@ -393,7 +393,7 @@ def train():
             Ls = [parallel.get() for _ in range(len(ctx))]
             # src_wc = src_wc.asscalar()
             # tgt_wc = tgt_wc.asscalar()
-            loss_denom += tgt_wc - bs
+            loss_denom += (tgt_wc - bs)
             is_sync = False
             if batch_id % grad_interval == grad_interval - 1 or\
                     batch_id == len(train_data_loader) - 1:
@@ -418,8 +418,8 @@ def train():
                 step_loss += L.as_in_context(mx.cpu())
             if batch_id % grad_interval == grad_interval - 1 or\
                     batch_id == len(train_data_loader) - 1:
-                log_avg_loss += step_loss / loss_denom * args.batch_size * 100.0
-                loss_denom = 0
+                log_avg_loss += step_loss / np.asscalar(loss_denom.sum()) * args.batch_size * 100.0
+                loss_denom = np.zeros(num_ctxs)
                 step_loss = 0
             log_wc += np.asscalar(src_wc.sum()) + np.asscalar(tgt_wc.sum())
             if (batch_id + 1) % (args.log_interval * grad_interval) == 0:
