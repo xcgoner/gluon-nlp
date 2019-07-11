@@ -152,9 +152,6 @@ parser.add_argument('--reset_mean_factor', type=float, default=1, help='rescale 
 parser.add_argument('--lr_rescale', type=float, default=1, help='rescale the lr, after reset')
 parser.add_argument('--lr_rescale_warmup', type=int, default=0, help='warmup step after rescale the lr, after reset')
 
-parser.add_argument('--mixing_weight', action='store_true',
-                    help='adaptively averge the local models')
-
 
 args = parser.parse_args()
 logging_config(args.save_dir)
@@ -340,7 +337,7 @@ def train():
     for epoch_id in range(args.start_epoch, args.epochs):
         log_avg_loss = 0
         log_wc = 0
-        loss_denom = 0
+        loss_denom = np.zeros(num_ctxs)
         step_loss = 0
         log_start_time = time.time()
         epoch_start_time = time.time()
@@ -366,8 +363,6 @@ def train():
             trainer._local_sgd = new_local_sgd
             local_sgd = new_local_sgd
 
-        local_Ls = [0. for _ in range(num_ctxs)]
-
         for batch_id, seqs \
                 in enumerate(train_data_loader):
 
@@ -383,48 +378,29 @@ def train():
                     lr_rescale += lr_rescale_warmup_rate
                     lr_rescale = min(1., lr_rescale)
                 trainer.set_learning_rate(new_lr)
-            src_wc, tgt_wc, bs = np.sum([(shard[2].sum(), shard[3].sum(), shard[0].shape[0])
-                                         for shard in seqs], axis=0)
+
+            # src_wc, tgt_wc, bs = np.sum([(shard[2].sum(), shard[3].sum(), shard[0].shape[0])
+            #                              for shard in seqs], axis=0)
+            src_wc = np.array([shard[2].sum() for shard in seqs])
+            tgt_wc = np.array([shard[3].sum() for shard in seqs])
+            bs = np.array([shard[0].shape[0] for shard in seqs])
+
             seqs = [[seq.as_in_context(context) for seq in shard]
                     for context, shard in zip(ctx, seqs)]
             Ls = []
             for seq in seqs:
                 parallel.put((seq, args.batch_size))
             Ls = [parallel.get() for _ in range(len(ctx))]
-
-            # compute mixing weight
-            for i in range(len(Ls)):
-                local_Ls[i] += Ls[i]
-
-            src_wc = src_wc.asscalar()
-            tgt_wc = tgt_wc.asscalar()
+            # src_wc = src_wc.asscalar()
+            # tgt_wc = tgt_wc.asscalar()
             loss_denom += tgt_wc - bs
             is_sync = False
             if batch_id % grad_interval == grad_interval - 1 or\
                     batch_id == len(train_data_loader) - 1:
-                step_size = float(loss_denom) / args.batch_size / 100.0
-                if local_sgd > 1:
-                    step_size /= len(ctx)
-                
-                # compute mixing weights
-                mx.nd.waitall()
-                mixing_weights_nparray = np.zeros((num_ctxs))
-                for i, L in enumerate(local_Ls):
-                    print(L.asscalar())
-                    # mixing_weights_nparray[i] = L.asscalar()
-                mx.nd.waitall()
-                print(mixing_weights_nparray)
-                mixing_weights_ndarray = mx.nd.array(mixing_weights_nparray)
-                mixing_weights_ndarray = mixing_weights_ndarray.max() - mixing_weights_ndarray
-                mixing_weights_ndarray /= mixing_weights_ndarray.sum()
-                mixing_weights = []
-                for i in range(len(local_Ls)):
-                    mixing_weights.append(mixing_weights_ndarray[i].asscalar())
-                local_Ls = [0. for _ in range(num_ctxs)]
-                if args.mixing_weight:
-                    is_sync = trainer.step(step_size, mixing_weights=mixing_weights)
-                else:
-                    is_sync = trainer.step(step_size, mixing_weights=None)
+                step_size = loss_denom.astype('float32') / args.batch_size / 100.0
+                # if local_sgd > 1:
+                #     step_size /= len(ctx)
+                is_sync = trainer.step(step_size.tolist())
                 param_dict = model.collect_params()
                 param_dict.zero_grad()
                 if step_num > average_start:
@@ -445,7 +421,7 @@ def train():
                 log_avg_loss += step_loss / loss_denom * args.batch_size * 100.0
                 loss_denom = 0
                 step_loss = 0
-            log_wc += src_wc + tgt_wc
+            log_wc += np.asscalar(src_wc.sum()) + np.asscalar(tgt_wc.sum())
             if (batch_id + 1) % (args.log_interval * grad_interval) == 0:
                 wps = log_wc / (time.time() - log_start_time)
                 log_avg_loss_scalar = log_avg_loss.asscalar()
