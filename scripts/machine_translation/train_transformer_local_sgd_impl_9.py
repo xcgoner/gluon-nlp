@@ -381,8 +381,8 @@ def train():
 
             # src_wc, tgt_wc, bs = np.sum([(shard[2].sum(), shard[3].sum(), shard[0].shape[0])
             #                              for shard in seqs], axis=0)
-            src_wc = np.array([shard[2].sum() for shard in seqs])
-            tgt_wc = np.array([shard[3].sum() for shard in seqs])
+            src_wc = np.array([shard[2].sum().asscalar() for shard in seqs])
+            tgt_wc = np.array([shard[3].sum().asscalar() for shard in seqs])
             bs = np.array([shard[0].shape[0] for shard in seqs])
 
             seqs = [[seq.as_in_context(context) for seq in shard]
@@ -421,9 +421,6 @@ def train():
                 log_avg_loss += step_loss / np.asscalar(loss_denom.sum()) * args.batch_size * 100.0
                 loss_denom = np.zeros(num_ctxs, dtype='float32')
                 step_loss = 0
-            print(src_wc)
-            print(tgt_wc)
-            print(type(tgt_wc))
             log_wc += np.asscalar(src_wc.sum() + tgt_wc.sum())
             if (batch_id + 1) % (args.log_interval * grad_interval) == 0:
                 wps = log_wc / (time.time() - log_start_time)
