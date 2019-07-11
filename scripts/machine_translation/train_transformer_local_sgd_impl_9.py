@@ -366,7 +366,7 @@ def train():
             trainer._local_sgd = new_local_sgd
             local_sgd = new_local_sgd
 
-        local_Ls = [mx.nd.array([0.]) for _ in range(num_ctxs)]
+        local_Ls = [0. for _ in range(num_ctxs)]
 
         for batch_id, seqs \
                 in enumerate(train_data_loader):
@@ -407,17 +407,16 @@ def train():
                     step_size /= len(ctx)
                 
                 # compute mixing weights
+                mx.nd.waitall()
                 mixing_weights_ndarray = mx.nd.zeros((num_ctxs), ctx=mx.cpu())
                 for i, L in enumerate(local_Ls):
-                    mixing_weights_ndarray[i] = L.reshape((1))[0]
+                    mixing_weights_ndarray[i] = L.asscalar()
                 mixing_weights_ndarray = mixing_weights_ndarray.max() - mixing_weights_ndarray
                 mixing_weights_ndarray /= mixing_weights_ndarray.sum()
                 mixing_weights = []
                 for i in range(len(local_Ls)):
-                    mixing_weights.append(mixing_weights_ndarray[i].as_in_context(Ls[i].context))
-                for i, mixing_weight in enumerate(mixing_weights):
-                    mixing_weights[i] = mixing_weights[i].as_in_context(Ls[i].context)
-                local_Ls = [mx.nd.array([0.]) for _ in range(num_ctxs)]
+                    mixing_weights.append(mixing_weights_ndarray[i].asscalar())
+                local_Ls = [0. for _ in range(num_ctxs)]
                 if args.mixing_weight:
                     is_sync = trainer.step(step_size, mixing_weights=mixing_weights)
                 else:
