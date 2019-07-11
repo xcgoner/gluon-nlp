@@ -393,8 +393,8 @@ def train():
             Ls = [parallel.get() for _ in range(len(ctx))]
 
             # compute mixing weight
-            for L, local_L in zip(Ls, local_Ls):
-                local_L += L.as_in_context(mx.cpu())
+            for i in range(len(Ls)):
+                local_Ls[i] += Ls[i]
 
             src_wc = src_wc.asscalar()
             tgt_wc = tgt_wc.asscalar()
