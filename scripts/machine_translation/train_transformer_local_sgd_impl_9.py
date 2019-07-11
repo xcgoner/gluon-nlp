@@ -337,7 +337,7 @@ def train():
     for epoch_id in range(args.start_epoch, args.epochs):
         log_avg_loss = 0
         log_wc = 0
-        loss_denom = np.zeros(num_ctxs)
+        loss_denom = np.zeros(num_ctxs, dtype='int64')
         step_loss = 0
         log_start_time = time.time()
         epoch_start_time = time.time()
@@ -419,7 +419,7 @@ def train():
             if batch_id % grad_interval == grad_interval - 1 or\
                     batch_id == len(train_data_loader) - 1:
                 log_avg_loss += step_loss / np.asscalar(loss_denom.sum()) * args.batch_size * 100.0
-                loss_denom = np.zeros(num_ctxs)
+                loss_denom = np.zeros(num_ctxs, dtype='int64')
                 step_loss = 0
             log_wc += np.asscalar(src_wc.sum()) + np.asscalar(tgt_wc.sum())
             if (batch_id + 1) % (args.log_interval * grad_interval) == 0:
