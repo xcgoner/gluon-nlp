@@ -421,6 +421,9 @@ def train():
                 log_avg_loss += step_loss / np.asscalar(loss_denom.sum()) * args.batch_size * 100.0
                 loss_denom = np.zeros(num_ctxs, dtype='float32')
                 step_loss = 0
+            print(src_wc)
+            print(tgt_wc)
+            print(type(tgt_wc))
             log_wc += np.asscalar(src_wc.sum() + tgt_wc.sum())
             if (batch_id + 1) % (args.log_interval * grad_interval) == 0:
                 wps = log_wc / (time.time() - log_start_time)
