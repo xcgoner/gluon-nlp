@@ -410,7 +410,8 @@ def train():
                 mx.nd.waitall()
                 mixing_weights_nparray = np.zeros((num_ctxs))
                 for i, L in enumerate(local_Ls):
-                    mixing_weights_nparray[i] = L.asscalar()
+                    print(L.asscalar())
+                    # mixing_weights_nparray[i] = L.asscalar()
                 mx.nd.waitall()
                 print(mixing_weights_nparray)
                 mixing_weights_ndarray = mx.nd.array(mixing_weights_nparray)
