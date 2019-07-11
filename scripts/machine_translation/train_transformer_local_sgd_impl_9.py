@@ -417,7 +417,7 @@ def train():
                     mixing_weights.append(mixing_weights_ndarray[i].as_in_context(Ls[i].context))
                 for i, mixing_weight in enumerate(mixing_weights):
                     mixing_weights[i] = mixing_weights[i].as_in_context(Ls[i].context)
-                local_Ls = [0. for _ in range(num_ctxs)]
+                local_Ls = [mx.nd.array([0.]) for _ in range(num_ctxs)]
                 if args.mixing_weight:
                     is_sync = trainer.step(step_size, mixing_weights=mixing_weights)
                 else:
