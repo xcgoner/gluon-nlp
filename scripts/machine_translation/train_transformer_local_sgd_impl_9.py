@@ -407,8 +407,14 @@ def train():
                     step_size /= len(ctx)
                 
                 # compute mixing weights
-                mixing_weights = local_Ls.max() - local_Ls
-                mixing_weights = mixing_weights / mixing_weights.sum()
+                mixing_weights_ndarray = mx.nd.zeros((num_ctxs), ctx=mx.cpu())
+                for i, L in enumerate(local_Ls):
+                    mixing_weights_ndarray[i] = L.reshape((1))[0]
+                mixing_weights_ndarray = mixing_weights_ndarray.max() - mixing_weights_ndarray
+                mixing_weights_ndarray /= mixing_weights_ndarray.sum()
+                mixing_weights = []
+                for i in range(len(local_Ls)):
+                    mixing_weights.append(mixing_weights_ndarray[i].as_in_context(Ls[i].context))
                 for i, mixing_weight in enumerate(mixing_weights):
                     mixing_weights[i] = mixing_weights[i].as_in_context(Ls[i].context)
                 local_Ls = [0. for _ in range(num_ctxs)]
