@@ -411,6 +411,8 @@ def train():
                 mixing_weights_ndarray = mx.nd.zeros((num_ctxs), ctx=mx.cpu())
                 for i, L in enumerate(local_Ls):
                     mixing_weights_ndarray[i] = L.asscalar()
+                mx.nd.waitall()
+                print(mixing_weights_ndarray)
                 mixing_weights_ndarray = mixing_weights_ndarray.max() - mixing_weights_ndarray
                 mixing_weights_ndarray /= mixing_weights_ndarray.sum()
                 mixing_weights = []
