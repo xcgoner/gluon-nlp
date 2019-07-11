@@ -366,7 +366,7 @@ def train():
             trainer._local_sgd = new_local_sgd
             local_sgd = new_local_sgd
 
-        local_Ls = [0. for _ in range(num_ctxs)]
+        local_Ls = [mx.nd.array([0.]) for _ in range(num_ctxs)]
 
         for batch_id, seqs \
                 in enumerate(train_data_loader):
