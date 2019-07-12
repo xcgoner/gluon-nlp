@@ -333,12 +333,12 @@ def train():
         state_path = os.path.join(args.save_dir, 'epoch{:d}.states'.format(args.start_epoch-1))
         logging.info('Loading states from %s', state_path)
         nlp.utils.load_states(trainer, state_path)
-        # step_num = int(math.ceil(len(train_data_loader) * args.start_epoch / grad_interval)) + 1
+        step_num = int(math.ceil(len(train_data_loader) * args.start_epoch / grad_interval)) + 1
         # # for adam
         # trainer.reset_adam_counter(step_num)
 
 
-    for epoch_id in range(args.epochs):
+    for epoch_id in range(args.start_epoch, args.epochs):
         log_avg_loss = 0
         log_wc = 0
         loss_denom = np.zeros(num_ctxs, dtype='float32')
