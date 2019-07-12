@@ -334,9 +334,7 @@ def train():
         nlp.utils.load_states(trainer, state_path)
         step_num = int(math.ceil(len(train_data_loader) * args.start_epoch / grad_interval)) + 1
         # for adam
-        for i, param in enumerate(model.collect_params()):
-            if param.grad_req != 'null':
-                trainer._optimizer._index_update_count[i] = step_num
+        trainer.reset_adam_counter(step_num)
 
 
     for epoch_id in range(args.start_epoch, args.epochs):

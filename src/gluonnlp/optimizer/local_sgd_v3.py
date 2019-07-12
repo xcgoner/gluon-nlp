@@ -134,6 +134,11 @@ class LocalSGDTrainerV3(mx.gluon.Trainer):
 
         self._kv_initialized = True
 
+    def reset_adam_counter(self, t):
+        for i, param in enumerate(self._params):
+            if param.grad_req != 'null':
+                trainer._optimizer._index_update_count[i] = t
+
     def init_states(self):
         """Initialize states (momentum for sgd_mon, or mean/var for adam) in the KVStore, for local sgd
         """
