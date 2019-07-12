@@ -333,11 +333,11 @@ def train():
         logging.info('Loading states from %s', state_path)
         nlp.utils.load_states(trainer, state_path)
         step_num = int(math.ceil(len(train_data_loader) * args.start_epoch / grad_interval)) + 1
-        # for adam
-        trainer.reset_adam_counter(step_num)
+        # # for adam
+        # trainer.reset_adam_counter(step_num)
 
 
-    for epoch_id in range(args.start_epoch, args.epochs):
+    for epoch_id in range(args.epochs):
         log_avg_loss = 0
         log_wc = 0
         loss_denom = np.zeros(num_ctxs, dtype='float32')
@@ -381,6 +381,9 @@ def train():
                     lr_rescale += lr_rescale_warmup_rate
                     lr_rescale = min(1., lr_rescale)
                 trainer.set_learning_rate(new_lr)
+            
+            if epoch_id < args.start_epoch:
+                continue
 
             # src_wc, tgt_wc, bs = np.sum([(shard[2].sum(), shard[3].sum(), shard[0].shape[0])
             #                              for shard in seqs], axis=0)
@@ -404,8 +407,6 @@ def train():
                 # if local_sgd > 1:
                 #     step_size /= len(ctx)
                 is_sync = trainer.step(step_size.tolist())
-                # debug
-                trainer.reset_adam_counter(step_num)
                 param_dict = model.collect_params()
                 param_dict.zero_grad()
                 if step_num > average_start:
@@ -439,6 +440,8 @@ def train():
                 log_start_time = time.time()
                 log_avg_loss = 0
                 log_wc = 0
+        if epoch_id < start_epoch:
+            continue
         if local_sgd > 1 and not is_sync:
             # synchronous model parameters for local sgd
             trainer.allreduce_params()
