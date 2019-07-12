@@ -440,7 +440,7 @@ def train():
                 log_start_time = time.time()
                 log_avg_loss = 0
                 log_wc = 0
-        if epoch_id < start_epoch:
+        if epoch_id < args.start_epoch:
             continue
         if local_sgd > 1 and not is_sync:
             # synchronous model parameters for local sgd
