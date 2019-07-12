@@ -135,6 +135,7 @@ class LocalSGDTrainerV3(mx.gluon.Trainer):
         self._kv_initialized = True
 
     def reset_adam_counter(self, t):
+        print(self._updaters[0].optimizer._index_update_count)
         for i, param in enumerate(self._params):
             if param.grad_req != 'null':
                 for updater in self._updaters:
