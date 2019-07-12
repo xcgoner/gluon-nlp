@@ -404,6 +404,8 @@ def train():
                 # if local_sgd > 1:
                 #     step_size /= len(ctx)
                 is_sync = trainer.step(step_size.tolist())
+                # debug
+                trainer.reset_adam_counter(step_num)
                 param_dict = model.collect_params()
                 param_dict.zero_grad()
                 if step_num > average_start:
