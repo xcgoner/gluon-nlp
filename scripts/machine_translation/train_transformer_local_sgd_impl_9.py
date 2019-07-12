@@ -381,9 +381,6 @@ def train():
                     lr_rescale += lr_rescale_warmup_rate
                     lr_rescale = min(1., lr_rescale)
                 trainer.set_learning_rate(new_lr)
-            
-            if epoch_id < args.start_epoch:
-                continue
 
             # src_wc, tgt_wc, bs = np.sum([(shard[2].sum(), shard[3].sum(), shard[0].shape[0])
             #                              for shard in seqs], axis=0)
@@ -440,8 +437,6 @@ def train():
                 log_start_time = time.time()
                 log_avg_loss = 0
                 log_wc = 0
-        if epoch_id < args.start_epoch:
-            continue
         if local_sgd > 1 and not is_sync:
             # synchronous model parameters for local sgd
             trainer.allreduce_params()
