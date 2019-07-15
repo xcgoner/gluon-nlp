@@ -345,7 +345,6 @@ def train():
         log_start_time = time.time()
         epoch_start_time = time.time()
 
-
         if local_sgd_epochs is not None and epoch_id in local_sgd_epochs:
             new_local_sgd = local_sgd_schedule[local_sgd_epochs.index(epoch_id)]
             if new_local_sgd <= 1:
@@ -444,7 +443,8 @@ def train():
         mx.nd.waitall()
         logging.info('[Epoch {}] time={:.2f}s'.format(epoch_id, time.time()-epoch_start_time))
         if args.log_var_mean:
-            trainer.print_var_mean()
+            var_mean_scalars = trainer.print_var_mean()
+            logging.info(var_mean_scalars)
         if epoch_id >= 5:
             valid_loss, valid_translation_out = evaluate(val_data_loader, ctx[0])
             valid_bleu_score, _, _, _, _ = compute_bleu([val_tgt_sentences], valid_translation_out,
