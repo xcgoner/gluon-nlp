@@ -200,7 +200,8 @@ class LocalSGDTrainerV2(mx.gluon.Trainer):
                     var_mean_list.append(mx.nd.mean(self._updaters[0].states[i][1]))
         mx.nd.waitall()
         var_mean_scalars = [var_mean.asscalar() for var_mean in var_mean_list]
-        print(var_mean_scalars)
+        # print(var_mean_scalars)
+        return var_mean_scalars
 
 
     def step(self, batch_size, ignore_stale_grad=False):

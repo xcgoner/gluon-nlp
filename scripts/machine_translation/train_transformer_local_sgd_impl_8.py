@@ -436,7 +436,8 @@ def train():
         mx.nd.waitall()
         logging.info('[Epoch {}] time={:.2f}s'.format(epoch_id, time.time()-epoch_start_time))
         if args.log_var_mean:
-            trainer.print_var_mean()
+            var_mean_scalars = trainer.print_var_mean()
+            logging.info(var_mean_scalars)
         if epoch_id >= 5:
             valid_loss, valid_translation_out = evaluate(val_data_loader, ctx[0])
             valid_bleu_score, _, _, _, _ = compute_bleu([val_tgt_sentences], valid_translation_out,
