@@ -100,3 +100,6 @@ class FP16DistributedLocalSGDTrainer(hvd.DistributedTrainer):
                     hvd.allreduce(self._updaters[0].states[i][0][j], average=True,
                                 name=str(idx), priority=-i-len(self._params)*2)
 
+        mx.nd.waitall()
+        print('_allreduce_states finished')
+
