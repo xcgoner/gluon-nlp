@@ -34,7 +34,7 @@ class DistributedLocalSGDTrainer(hvd.DistributedTrainer):
     def __init__(self, params, optimizer, optimizer_params=None, 
                 local_sgd=1):
 
-        super(LocalSGDHVDTrainer, self).__init__(
+        super(DistributedLocalSGDTrainer, self).__init__(
             params, optimizer, optimizer_params=optimizer_params, kvstore=None, update_on_kvstore=False)
 
         # _scale is used to check and set rescale_grad for optimizer in Trainer.step()
