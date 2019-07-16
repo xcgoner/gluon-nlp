@@ -35,7 +35,7 @@ class DistributedLocalSGDTrainer(hvd.DistributedTrainer):
                 local_sgd=1):
 
         super(DistributedLocalSGDTrainer, self).__init__(
-            params, optimizer, optimizer_params=optimizer_params, kvstore=None, update_on_kvstore=False)
+            params, optimizer, optimizer_params=optimizer_params)
 
         # _scale is used to check and set rescale_grad for optimizer in Trainer.step()
         # function. Normalizing it by Horovod size, which is equivalent to performing
