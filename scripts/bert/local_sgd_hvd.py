@@ -57,7 +57,7 @@ class FP16DistributedLocalSGDTrainer(hvd.DistributedTrainer):
                     name=str(i), priority=-i)
 
     def _update(self, ignore_stale_grad=False):
-        super(DistributedLocalSGDTrainer, self)._update(ignore_stale_grad=ignore_stale_grad)
+        super(FP16DistributedLocalSGDTrainer, self)._update(ignore_stale_grad=ignore_stale_grad)
         if self._local_sgd > 1:
             # local sgd
             self._local_sgd_counter += 1
