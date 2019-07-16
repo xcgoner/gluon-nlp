@@ -112,7 +112,7 @@ if not args.use_avg_len and hvd.size() > 1:
 logging.info('Using effective batch size = batch_size * accumulate * np = %d',
              args.batch_size * args.accumulate * num_workers)
 
-from gluonnlp.optimizer.local_sgd_hvd import DistributedLocalSGDTrainer
+from local_sgd_hvd import FP16DistributedLocalSGDTrainer
 
 
 def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx):
@@ -139,7 +139,7 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx):
     
     local_sgd = args.local_sgd
 
-    trainer = DistributedLocalSGDTrainer(model.collect_params(), args.optimizer, optim_params, local_sgd=local_sgd)
+    trainer = FP16DistributedLocalSGDTrainer(model.collect_params(), args.optimizer, optim_params, local_sgd=local_sgd)
     fp16_trainer = FP16Trainer(trainer, dynamic_loss_scale=dynamic_loss_scale,
                                loss_scaler_params=loss_scale_param)
 
@@ -257,7 +257,7 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx):
 
                         # synchronize params and states for local sgd
                         if local_sgd > 1:
-                            fp16_trainer.fp32_trainer.allreduce_params()
+                            # fp16_trainer.fp32_trainer.allreduce_params()
                             fp16_trainer.fp32_trainer.allreduce_states()
 
                         evaluate(dataset_eval, model, nsp_loss, mlm_loss, len(vocab), [ctx],
