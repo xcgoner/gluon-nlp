@@ -72,14 +72,10 @@ class FP16DistributedLocalSGDTrainer(hvd.DistributedTrainer):
 
     def _allreduce_params(self):
         # print("_allreduce_params")
-        mx.nd.waitall()
-        print('_allreduce_params started')
         for i, param in enumerate(self._params):
             if param.grad_req != 'null':
                 allreduce_(param.list_data()[0], average=True,
                                 name=str(i), priority=-i)
-        mx.nd.waitall()
-        print('_allreduce_params started')
 
     def allreduce_states(self):
         """For each parameter, reduce the gradients from different contexts.
