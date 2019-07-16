@@ -99,7 +99,8 @@ class FP16DistributedLocalSGDTrainer(hvd.DistributedTrainer):
         print('_allreduce_states started')
         for i, param in reversed(list(enumerate(self._params))):
             if param.grad_req != 'null':
-                for j in range(len(self._updaters[0].states[i][0])):
+                # for j in range(len(self._updaters[0].states[i][0])):
+                    j = 0
                     idx = i+len(self._params)*(j+1)
                     hvd.allreduce(self._updaters[0].states[i][0][j], average=True,
                                 name=str(idx), priority=-i-len(self._params)*2)
