@@ -28,6 +28,7 @@ import types
 import warnings
 import math
 
+import horovod.mxnet as hvd
 from horovod.mxnet.mpi_ops import allreduce, allreduce_
 
 class FP16DistributedLocalSGDTrainer(hvd.DistributedTrainer):
@@ -53,7 +54,7 @@ class FP16DistributedLocalSGDTrainer(hvd.DistributedTrainer):
         if self._local_sgd == 1:
             for i, param in enumerate(self._params):
                 if param.grad_req != 'null':
-                    allreduce_(param.list_grad()[0], average=False,
+                    hvd.allreduce(param.list_grad()[0], average=False,
                                   name=str(i), priority=-i)
 
     # def _update(self, ignore_stale_grad=False):
