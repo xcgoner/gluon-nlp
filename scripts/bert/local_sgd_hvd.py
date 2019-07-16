@@ -43,18 +43,20 @@ class FP16DistributedLocalSGDTrainer(hvd.DistributedTrainer):
         # _scale is used to check and set rescale_grad for optimizer in Trainer.step()
         # function. Normalizing it by Horovod size, which is equivalent to performing
         # average in allreduce, has better performance. 
+
+        # directly take average in allreduce_
+        self._scale *= hvd.size()
         if local_sgd is None or local_sgd <= 1:
             self._local_sgd = 1
         else:
             self._local_sgd = local_sgd
-            # self._scale *= hvd.size()
         self._local_sgd_counter = 0
 
     def _allreduce_grads(self):
         if self._local_sgd == 1:
             for i, param in enumerate(self._params):
                 if param.grad_req != 'null':
-                    allreduce_(param.list_grad()[0], average=False,
+                    allreduce_(param.list_grad()[0], average=True,
                                   name=str(i), priority=-i)
 
     def _update(self, ignore_stale_grad=False):
