@@ -130,14 +130,17 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx):
     if args.dtype == 'float16':
         optim_params['multi_precision'] = True
 
+    local_sgd = args.local_sgd
+
     dynamic_loss_scale = args.dtype == 'float16'
     if dynamic_loss_scale:
-        # loss_scale_param = {'scale_window': 2000 / num_workers}
-        loss_scale_param = {'scale_window': 2000}
+        if local_sgd > 1:
+            loss_scale_param = {'scale_window': 2000}
+        else:
+            loss_scale_param = {'scale_window': 2000 / num_workers}
     else:
         loss_scale_param = None
     
-    local_sgd = args.local_sgd
 
     trainer = FP16DistributedLocalSGDTrainer(model.collect_params(), args.optimizer, optim_params, local_sgd=local_sgd)
     fp16_trainer = FP16Trainer(trainer, dynamic_loss_scale=dynamic_loss_scale,
@@ -228,8 +231,10 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx):
                     # 1. allreduce gradients from all workers
                     # 2. checking the global_norm of gradients and clip them if necessary
                     # 3. averaging the gradients and apply updates
-                    # fp16_trainer.step(1, max_norm=1*num_workers)
-                    fp16_trainer.step(1, max_norm=1)
+                    if local_sgd > 1:
+                        fp16_trainer.step(1, max_norm=1)
+                    else:
+                        fp16_trainer.step(1, max_norm=1*num_workers)
 
                 nsp_metric.update([ns_label], [classified])
                 mlm_metric.update([masked_id], [decoded], [masked_weight])
