@@ -50,53 +50,15 @@ class FP16DistributedLocalSGDTrainer(hvd.DistributedTrainer):
             self._scale *= hvd.size()
         self._local_sgd_counter = 0
 
-    # def _allreduce_grads(self):
-    #     if self._local_sgd == 1:
-    #         for i, param in enumerate(self._params):
-    #             if param.grad_req != 'null':
-    #                 hvd.allreduce(param.list_grad()[0], average=False,
-    #                               name=str(i), priority=-i)
+    def _allreduce_grads(self):
+        if self._local_sgd == 1:
+            for i, param in enumerate(self._params):
+                if param.grad_req != 'null':
+                    allreduce_(param.list_grad()[0], average=False,
+                                  name=str(i), priority=-i)
 
-    # def _update(self, ignore_stale_grad=False):
-    #     super(FP16DistributedLocalSGDTrainer, self)._update(ignore_stale_grad=ignore_stale_grad)
-    #     if self._local_sgd > 1:
-    #         # local sgd
-    #         self._local_sgd_counter += 1
-    #         if self._local_sgd_counter == self._local_sgd:
-    #             self._local_sgd_counter = 0
-    #             # synchronization
-    #             self._allreduce_params()
-    #             # self._allreduce_states()
-
-    def update(self, batch_size, ignore_stale_grad=False):
-        """Makes one step of parameter update.
-        Should be called after `autograd.backward()` and outside of `record()` scope,
-        and after `trainer.update()`.
-        For normal parameter updates, `step()` should be used, which internally calls
-        `allreduce_grads()` and then `update()`. However, if you need to get the reduced
-        gradients to perform certain transformation, such as in gradient clipping, then
-        you may want to manually call `allreduce_grads()` and `update()` separately.
-        Parameters
-        ----------
-        batch_size : int
-            Batch size of data processed. Gradient will be normalized by `1/batch_size`.
-            Set this to 1 if you normalized loss manually with `loss = mean(loss)`.
-        ignore_stale_grad : bool, optional, default=False
-            If true, ignores Parameters with stale gradient (gradient that has not
-            been updated by `backward` after last step) and skip update.
-        """
-        if not self._kv_initialized:
-            self._init_kvstore()
-        if self._params_to_init:
-            self._init_params()
-        assert not (self._kvstore and self._update_on_kvstore), \
-                'update() when parameters are updated on kvstore ' \
-                'is not supported. Try setting `update_on_kvstore` ' \
-                'to False when creating trainer.'
-
-        self._check_and_rescale_grad(self._scale / batch_size)
-        self._update(ignore_stale_grad)
-
+    def _update(self, ignore_stale_grad=False):
+        super(FP16DistributedLocalSGDTrainer, self)._update(ignore_stale_grad=ignore_stale_grad)
         if self._local_sgd > 1:
             # local sgd
             self._local_sgd_counter += 1
@@ -112,7 +74,7 @@ class FP16DistributedLocalSGDTrainer(hvd.DistributedTrainer):
         print('_allreduce_params started')
         for i, param in enumerate(self._params):
             if param.grad_req != 'null':
-                hvd.allreduce(param.list_data()[0], average=True,
+                allreduce_(param.list_data()[0], average=True,
                                 name=str(i), priority=-i)
         mx.nd.waitall()
         print('_allreduce_params started')
@@ -138,7 +100,7 @@ class FP16DistributedLocalSGDTrainer(hvd.DistributedTrainer):
         # sync params
         # for i, param in enumerate(self._params):
         #     if param.grad_req != 'null':
-        #         hvd.allreduce(self._updaters[0].states[i][1], average=True,
+        #         allreduce_(self._updaters[0].states[i][1], average=True,
         #                         name=str(i), priority=-i)
         #         # copy fp32 weight to fp16 weight, assume using hvd with single GPU per process
         #         self._updaters[0].states[i][1].copyto(param.list_data()[0])
@@ -150,7 +112,7 @@ class FP16DistributedLocalSGDTrainer(hvd.DistributedTrainer):
                 # for j in range(len(self._updaters[0].states[i][0])):
                     j = 0
                     idx = i+len(self._params)*(j+1)
-                    hvd.allreduce(self._updaters[0].states[i][0][j], average=True,
+                    allreduce_(self._updaters[0].states[i][0][j], average=True,
                                 name=str(idx), priority=-i-len(self._params)*2)
 
         mx.nd.waitall()
