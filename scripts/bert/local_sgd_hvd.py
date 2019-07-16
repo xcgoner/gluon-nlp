@@ -39,6 +39,8 @@ class FP16DistributedLocalSGDTrainer(hvd.DistributedTrainer):
         super(FP16DistributedLocalSGDTrainer, self).__init__(
             params, optimizer, optimizer_params=optimizer_params)
 
+        self._scale *= hvd.size()
+
         # _scale is used to check and set rescale_grad for optimizer in Trainer.step()
         # function. Normalizing it by Horovod size, which is equivalent to performing
         # average in allreduce, has better performance. 
@@ -93,6 +95,8 @@ class FP16DistributedLocalSGDTrainer(hvd.DistributedTrainer):
         #         # copy fp32 weight to fp16 weight, assume using hvd with single GPU per process
         #         self._updaters[0].states[i][1].copyto(param.list_data()[0])
         # sync mean and var
+        mx.nd.waitall()
+        print('_allreduce_states started')
         for i, param in reversed(list(enumerate(self._params))):
             if param.grad_req != 'null':
                 for j in range(len(self._updaters[0].states[i][0])):
