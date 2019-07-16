@@ -49,24 +49,24 @@ class FP16DistributedLocalSGDTrainer(hvd.DistributedTrainer):
             self._scale *= hvd.size()
         self._local_sgd_counter = 0
 
-    def _allreduce_grads(self):
-        # sort needed for Python < 3.6 is not guaranteed
-        if self._local_sgd == 1:
-            for i, param in enumerate(sorted(self._params, key=lambda p: p.name)):
-                if param.grad_req != 'null':
-                    hvd.allreduce(param.list_grad()[0], average=False,
-                    name=str(i), priority=-i)
+    # def _allreduce_grads(self):
+    #     # sort needed for Python < 3.6 is not guaranteed
+    #     if self._local_sgd == 1:
+    #         for i, param in enumerate(sorted(self._params, key=lambda p: p.name)):
+    #             if param.grad_req != 'null':
+    #                 hvd.allreduce(param.list_grad()[0], average=False,
+    #                 name=str(i), priority=-i)
 
-    def _update(self, ignore_stale_grad=False):
-        super(FP16DistributedLocalSGDTrainer, self)._update(ignore_stale_grad=ignore_stale_grad)
-        if self._local_sgd > 1:
-            # local sgd
-            self._local_sgd_counter += 1
-            if self._local_sgd_counter == self._local_sgd:
-                self._local_sgd_counter = 0
-                # synchronization
-                self._allreduce_params()
-                # self._allreduce_states()
+    # def _update(self, ignore_stale_grad=False):
+    #     super(FP16DistributedLocalSGDTrainer, self)._update(ignore_stale_grad=ignore_stale_grad)
+    #     if self._local_sgd > 1:
+    #         # local sgd
+    #         self._local_sgd_counter += 1
+    #         if self._local_sgd_counter == self._local_sgd:
+    #             self._local_sgd_counter = 0
+    #             # synchronization
+    #             self._allreduce_params()
+    #             # self._allreduce_states()
 
     def _allreduce_params(self):
         # print("_allreduce_params")
