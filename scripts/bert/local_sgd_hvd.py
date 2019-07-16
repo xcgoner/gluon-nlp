@@ -50,12 +50,12 @@ class FP16DistributedLocalSGDTrainer(hvd.DistributedTrainer):
             self._scale *= hvd.size()
         self._local_sgd_counter = 0
 
-    def _allreduce_grads(self):
-        if self._local_sgd == 1:
-            for i, param in enumerate(self._params):
-                if param.grad_req != 'null':
-                    hvd.allreduce(param.list_grad()[0], average=False,
-                                  name=str(i), priority=-i)
+    # def _allreduce_grads(self):
+    #     if self._local_sgd == 1:
+    #         for i, param in enumerate(self._params):
+    #             if param.grad_req != 'null':
+    #                 hvd.allreduce(param.list_grad()[0], average=False,
+    #                               name=str(i), priority=-i)
 
     # def _update(self, ignore_stale_grad=False):
     #     super(FP16DistributedLocalSGDTrainer, self)._update(ignore_stale_grad=ignore_stale_grad)
