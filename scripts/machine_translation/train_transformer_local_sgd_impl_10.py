@@ -418,7 +418,6 @@ def train():
                     local_average_counter = 0
                 local_average_counter += 1
                 if local_average_counter <= local_average:
-                    print("Stpe {}, take average".format(step_num))
                     if step_num > average_start:
                         average_counter += 1
                         if average_param_dict_list is None:
@@ -429,8 +428,6 @@ def train():
                             for i in range(len(ctx)):
                                 for name, average_param in average_param_dict_list[i].items():
                                     average_param[:] += alpha * (param_dict[name].data(ctx[i]) - average_param)
-                else:
-                    print("Stpe {}, not take average".format(step_num))
             # step_loss += sum([L.asscalar() for L in Ls])
             for L in Ls:
                 step_loss += L.as_in_context(mx.cpu())
