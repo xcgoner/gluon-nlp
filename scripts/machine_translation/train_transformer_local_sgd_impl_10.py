@@ -454,7 +454,7 @@ def train():
             trainer.allreduce_params()
             trainer.allreduce_states()
             param_dict = model.collect_params()
-                param_dict.zero_grad()
+            param_dict.zero_grad()
                 if step_num > average_start:
                     average_counter += 1
                     if average_param_dict_list is None:
