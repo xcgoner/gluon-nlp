@@ -455,16 +455,16 @@ def train():
             trainer.allreduce_states()
             param_dict = model.collect_params()
             param_dict.zero_grad()
-                if step_num > average_start:
-                    average_counter += 1
-                    if average_param_dict_list is None:
-                        average_param_dict_list = [{k: v.data(c).copy() for k, v in
-                                            model.collect_params().items()} for c in ctx]
-                    else:
-                        alpha = 1. / average_counter
-                        for i in range(len(ctx)):
-                            for name, average_param in average_param_dict_list[i].items():
-                                average_param[:] += alpha * (param_dict[name].data(ctx[i]) - average_param)
+            if step_num > average_start:
+                average_counter += 1
+                if average_param_dict_list is None:
+                    average_param_dict_list = [{k: v.data(c).copy() for k, v in
+                                        model.collect_params().items()} for c in ctx]
+                else:
+                    alpha = 1. / average_counter
+                    for i in range(len(ctx)):
+                        for name, average_param in average_param_dict_list[i].items():
+                            average_param[:] += alpha * (param_dict[name].data(ctx[i]) - average_param)
 
         mx.nd.waitall()
         logging.info('[Epoch {}] time={:.2f}s'.format(epoch_id, time.time()-epoch_start_time))
