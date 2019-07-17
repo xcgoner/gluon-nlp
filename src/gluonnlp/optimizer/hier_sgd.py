@@ -28,6 +28,7 @@ import types
 import warnings
 
 import horovod.mxnet as hvd
+from horovod.mxnet.mpi_ops import allreduce, allreduce_
 
 class DistributedHierTrainer(mx.gluon.Trainer):
     def __init__(self, params, optimizer, optimizer_params=None, kvstore='device'):
@@ -52,9 +53,9 @@ class DistributedHierTrainer(mx.gluon.Trainer):
                 self._kvstore.push(i, param.list_grad(), priority=-i)
                 # TODO(xcong) allreduce the buffer, avoid the extra copy in kvstore.pull
                 self._kvstore.pull(i, [param.list_grad()[reduce_ind]], priority=-i)
-                # hvd.allreduce(param.list_grad()[0], average=False, 
+                # allreduce_(param.list_grad()[0], average=False, 
                 #               name=str(i + name_base), priority=-i)
-                hvd.allreduce(param.list_grad()[reduce_ind], average=False, priority=-i)
+                allreduce_(param.list_grad()[reduce_ind], average=False, priority=-i)
                 for j in range(len(param.list_grad())):
                     if j != reduce_ind:
                         param.list_grad()[reduce_ind].copyto(param.list_grad()[j])
