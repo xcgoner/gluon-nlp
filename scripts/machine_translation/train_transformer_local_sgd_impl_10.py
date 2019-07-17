@@ -429,7 +429,8 @@ def train():
                             for i in range(len(ctx)):
                                 for name, average_param in average_param_dict_list[i].items():
                                     average_param[:] += alpha * (param_dict[name].data(ctx[i]) - average_param)
-                print("Stpe {}, not take average".format(step_num))
+                else:
+                    print("Stpe {}, not take average".format(step_num))
             # step_loss += sum([L.asscalar() for L in Ls])
             for L in Ls:
                 step_loss += L.as_in_context(mx.cpu())
