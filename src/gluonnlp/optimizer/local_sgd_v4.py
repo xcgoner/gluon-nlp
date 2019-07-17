@@ -42,7 +42,7 @@ class LocalSGDTrainerV4(mx.gluon.Trainer):
         avg_var_list = []
         for i, param in enumerate(self._params):
             if param.grad_req != 'null':
-                grad_mean = zeros(param.list_grad()[0].shape, param.list_grad()[0].context, dtype=param.list_grad()[0].dtype)
+                grad_mean = mx.nd.zeros(param.list_grad()[0].shape, param.list_grad()[0].context, dtype=param.list_grad()[0].dtype)
                 self._kvstore.push(i, param.list_grad(), priority=-i)
                 self._kvstore.pull(i, [grad_mean], priority=-i)
                 # take average
@@ -57,7 +57,7 @@ class LocalSGDTrainerV4(mx.gluon.Trainer):
         var_avg_list = []
         for i, param in enumerate(self._params):
             if param.grad_req != 'null':
-                grad_vars = [zeros(grad.shape, grad.context, dtype=grad.dtype) for grad in param.list_grad()]
+                grad_vars = [mx.nd.zeros(grad.shape, grad.context, dtype=grad.dtype) for grad in param.list_grad()]
                 for var, grad in zip(grad_vars, param.list_grad()):
                     mx.nd.square(grad, out=var)
                 self._kvstore.push(i, grad_vars, priority=-i)
