@@ -136,7 +136,7 @@ parser.add_argument('--save_dir', type=str, default='transformer_out',
 parser.add_argument('--gpus', type=str,
                     help='list of gpus to run, e.g. 0 or 0,2,5. empty means using cpu.'
                          '(using single gpu is suggested)')
-parser.add_argument('--log_vars', type=str,
+parser.add_argument('--log_vars', type=str, default='1,2,4,8'
                     help='list of numbers of workers to check var')
 args = parser.parse_args()
 logging_config(args.save_dir)
