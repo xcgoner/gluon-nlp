@@ -114,8 +114,15 @@ is_master_node = rank == local_rank
 if not args.use_avg_len and hvd.size() > 1:
     logging.info('Specifying --use-avg-len and setting --batch_size with the '
                  'target number of tokens would help improve training throughput.')
-logging.info('Using effective batch size = batch_size * accumulate * np = %d',
-             args.batch_size * args.accumulate * num_workers)
+ctx = [mx.cpu()] if args.gpus is None or args.gpus == '' else \
+        [mx.gpu(int(x)) for x in args.gpus.split(',')]
+if args.gpus is not None and args.gpus != '':
+    ctx_list_size = int(math.ceil(len(ctx) / float(num_local_workers)))
+    ctx = ctx[(local_rank * ctx_list_size) : min((local_rank+1)*ctx_list_size, len(ctx))]
+# debug
+logging.info(ctx)
+logging.info('Using effective batch size = batch_size * accumulate * np * num_ctxes = %d',
+             args.batch_size * args.accumulate * num_workers * len(ctx))
 
 class ParallelBERT(nlp.utils.Parallelizable):
     """Data parallel BERT model.
@@ -350,14 +357,6 @@ if __name__ == '__main__':
     random_seed = random.randint(0, 1000)
     nlp.utils.mkdir(args.ckpt_dir)
     # ctx = mx.gpu(local_rank)
-
-    ctx = [mx.cpu()] if args.gpus is None or args.gpus == '' else \
-          [mx.gpu(int(x)) for x in args.gpus.split(',')]
-    if args.gpus is not None and args.gpus != '':
-        ctx_list_size = int(math.ceil(len(ctx) / float(num_local_workers)))
-        ctx = ctx[(local_rank * ctx_list_size) : min((local_rank+1)*ctx_list_size, len(ctx))]
-    # debug
-    logging.info(ctx)
 
     dataset_name, vocab = args.dataset_name, None
     if args.sentencepiece:
