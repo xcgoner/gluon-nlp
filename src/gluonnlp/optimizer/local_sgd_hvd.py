@@ -51,7 +51,7 @@ class DistributedLocalSGDTrainer(hvd.DistributedTrainer):
         if self._local_sgd == 1:
             for i, param in enumerate(sorted(self._params, key=lambda p: p.name)):
                 if param.grad_req != 'null':
-                    hvd.allreduce(param.list_grad()[0], average=False,
+                    hvd.allreduce_(param.list_grad()[0], average=False,
                     name=str(i), priority=-i)
 
     def _update(self, ignore_stale_grad=False):
@@ -89,7 +89,7 @@ class DistributedLocalSGDTrainer(hvd.DistributedTrainer):
         # print("_allreduce_params")
         for i, param in enumerate(sorted(self._params, key=lambda p: p.name)):
             if param.grad_req != 'null':
-                hvd.allreduce(param.list_data()[0], average=True,
+                hvd.allreduce_(param.list_data()[0], average=True,
                                 name=str(i), priority=-i)
 
     def allreduce_states(self):
@@ -115,10 +115,10 @@ class DistributedLocalSGDTrainer(hvd.DistributedTrainer):
                     # for some optimizers, there are multiple states (mean, variance), such as Adam
                     for j in range(len(self._updaters[0].states[i])):
                         idx = i+len(self._params)*(j+1)
-                        hvd.allreduce(self._updaters[0].states[i][j], average=True,
+                        hvd.allreduce_(self._updaters[0].states[i][j], average=True,
                                     name=str(idx), priority=-i-len(self._params)*2)
                 else:
                     idx = i+len(self._params)
-                    hvd.allreduce(self._updaters[0].states[i], average=True,
+                    hvd.allreduce_(self._updaters[0].states[i], average=True,
                                     name=str(idx), priority=-i-len(self._params)*2)
 
