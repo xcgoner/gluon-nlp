@@ -34,42 +34,44 @@ class LocalSGDTrainerV4(mx.gluon.Trainer):
         super(LocalSGDTrainerV4, self).__init__(
             params, optimizer, optimizer_params=optimizer_params, kvstore=kvstore, update_on_kvstore=False)
 
-    def check_grad_var(self):
+    def check_grad_var(self, num_workers_list):
         # print("check_grad_var")
+
+        if not isinstance(num_workers_list, list):
+            num_workers_list = [num_workers_list]
+
         mx.nd.waitall()
 
         # first average then square
-        avg_var_list = []
+        avg_var_layers_list = [[] for _ in num_workers_list]
         for i, param in enumerate(self._params):
             if param.grad_req != 'null':
                 grad_mean = mx.nd.zeros(param.list_grad()[0].shape, param.list_grad()[0].context, dtype=param.list_grad()[0].dtype)
-                self._kvstore.push(i, param.list_grad(), priority=-i)
-                self._kvstore.pull(i, [grad_mean], priority=-i)
-                # take average
-                # assume that every worker has the same number of gpus/contexts
-                num_workers = len(param.list_grad())
-                grad_mean /= num_workers
-                avg_var_list.append(mx.nd.mean(mx.nd.square(grad_mean)))
+                for j, num_workers in enumerate(num_workers_list):
+                    self._kvstore.push(i, param.list_grad()[0:num_workers], priority=-i)
+                    self._kvstore.pull(i, [grad_mean], priority=-i)
+                    # take average
+                    grad_mean /= num_workers
+                    avg_var_layers_list[j].append(mx.nd.mean(mx.nd.square(grad_mean)))
         mx.nd.waitall()
-        avg_var_scalars = [avg_var.asscalar() for avg_var in avg_var_list]
+        avg_var_scalars_list = [[avg_var.asscalar() for avg_var in avg_var_layers] for avg_var_layers in avg_var_layers_list]
 
         # first square then average
-        var_avg_list = []
+        var_avg_layers_list = [[] for _ in num_workers_list]
         for i, param in enumerate(self._params):
             if param.grad_req != 'null':
                 grad_vars = [mx.nd.zeros(grad.shape, grad.context, dtype=grad.dtype) for grad in param.list_grad()]
                 for var, grad in zip(grad_vars, param.list_grad()):
                     mx.nd.square(grad, out=var)
-                self._kvstore.push(i, grad_vars, priority=-i)
-                self._kvstore.pull(i, [grad_vars[0]], priority=-i)
-                # take average
-                # assume that every worker has the same number of gpus/contexts
-                num_workers = len(param.list_grad())
-                grad_vars[0] /= num_workers
-                var_avg_list.append(mx.nd.mean(grad_vars[0]))
+                for j, num_workers in enumerate(num_workers_list):
+                    self._kvstore.push(i, grad_vars[0:num_workers], priority=-i)
+                    self._kvstore.pull(i, [grad_vars[0]], priority=-i)
+                    # take average
+                    grad_vars[0] /= num_workers
+                    var_avg_layers_list[j].append(mx.nd.mean(grad_vars[0]))
         mx.nd.waitall()
-        var_avg_scalars = [var_avg.asscalar() for var_avg in var_avg_list]
+        var_avg_scalars_list = [[var_avg.asscalar() for var_avg in var_avg_layers] for var_avg_layers in var_avg_layers_list]
 
-        return avg_var_scalars, var_avg_scalars
+        return avg_var_scalars_list, var_avg_scalars_list
 
 

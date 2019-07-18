@@ -136,6 +136,8 @@ parser.add_argument('--save_dir', type=str, default='transformer_out',
 parser.add_argument('--gpus', type=str,
                     help='list of gpus to run, e.g. 0 or 0,2,5. empty means using cpu.'
                          '(using single gpu is suggested)')
+parser.add_argument('--log_vars', type=str,
+                    help='list of numbers of workers to check var')
 args = parser.parse_args()
 logging_config(args.save_dir)
 logging.info(args)
@@ -208,6 +210,8 @@ test_loss_function.hybridize(static_alloc=static_alloc)
 rescale_loss = 100
 parallel_model = ParallelTransformer(model, label_smoothing, loss_function, rescale_loss)
 detokenizer = nlp.data.SacreMosesDetokenizer()
+
+log_vars = [int(x) for x in args.log_vars.split(',')]
 
 
 def evaluate(data_loader, context=ctx[0]):
@@ -322,7 +326,7 @@ def train():
 
                 # print var
                 if step_num % args.log_interval == 0:
-                    avg_var_scalars, var_avg_scalars = trainer.check_grad_var()
+                    avg_var_scalars, var_avg_scalars = trainer.check_grad_var(log_vars)
                     logging.info('Step {}, avg_var={}'.format(step_num, avg_var_scalars))
                     logging.info('Step {}, var_avg={}'.format(step_num, var_avg_scalars))
                 
