@@ -114,7 +114,7 @@ if not args.use_avg_len and hvd.size() > 1:
 logging.info('Using effective batch size = batch_size * accumulate * np = %d',
              args.batch_size * args.accumulate * num_workers)
 
-from local_sgd_hvd import FP16DistributedLocalSGDTrainerV2
+from local_sgd_hvd_v2 import FP16DistributedLocalSGDTrainerV2
 
 
 def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx):
