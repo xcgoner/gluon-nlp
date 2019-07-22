@@ -130,17 +130,17 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx):
     # test local reduction
     local_reduction_array = mx.nd.array([float(local_rank), float(local_rank), float(local_rank)]).as_in_context(ctx)
     mx.nd.waitall()
-    logging.info('local_reduction_array: {}'.format(local_reduction_array.asnumpy()))
+    logging.info('local_reduction_array before allreduce: {}'.format(local_reduction_array.asnumpy()))
     allreduce_(local_reduction_array, average=True,
                 name='local_reduction_array', priority=0, 
                 local_reduction = True)
     mx.nd.waitall()
-    logging.info('local_reduction_array: {}'.format(local_reduction_array.asnumpy()))
+    logging.info('local_reduction_array after local allreduce: {}'.format(local_reduction_array.asnumpy()))
     allreduce_(local_reduction_array, average=True,
                 name='local_reduction_array', priority=0, 
                 local_reduction = False)
     mx.nd.waitall()
-    logging.info('local_reduction_array: {}'.format(local_reduction_array.asnumpy()))
+    logging.info('local_reduction_array after global allreduce: {}'.format(local_reduction_array.asnumpy()))
 
     logging.debug('Creating distributed trainer...')
     lr = args.lr
