@@ -132,12 +132,12 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx):
     mx.nd.waitall()
     logging.info('local_reduction_array: {}'.format(local_reduction_array.asnumpy()))
     allreduce_(local_reduction_array, average=True,
-                name='local_reduction_array', priority=-i, 
+                name='local_reduction_array', priority=0, 
                 local_reduction = True)
     mx.nd.waitall()
     logging.info('local_reduction_array: {}'.format(local_reduction_array.asnumpy()))
     allreduce_(local_reduction_array, average=True,
-                name='local_reduction_array', priority=-i, 
+                name='local_reduction_array', priority=0, 
                 local_reduction = False)
     mx.nd.waitall()
     logging.info('local_reduction_array: {}'.format(local_reduction_array.asnumpy()))
