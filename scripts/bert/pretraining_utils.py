@@ -407,6 +407,11 @@ def evaluate(data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx, log_interval
         total_nsp_loss += running_nsp_loss
     total_mlm_loss /= step_num
     total_nsp_loss /= step_num
+
+    # average over ctx
+    total_mlm_loss /= len(ctx)
+    total_nsp_loss /= len(ctx)
+
     logging.info('Eval mlm_loss={:.3f}\tmlm_acc={:.1f}\tnsp_loss={:.3f}\tnsp_acc={:.1f}\t'
                  .format(total_mlm_loss.asscalar(), mlm_metric.get_global()[1] * 100,
                          total_nsp_loss.asscalar(), nsp_metric.get_global()[1] * 100))
