@@ -118,14 +118,6 @@ from local_sgd_hvd_v2 import FP16DistributedLocalSGDTrainerV2
 
 
 def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx):
-    """Training function."""
-    hvd.broadcast_parameters(model.collect_params(), root_rank=0)
-
-    mlm_metric = nlp.metric.MaskedAccuracy()
-    nsp_metric = nlp.metric.MaskedAccuracy()
-    mlm_metric.reset()
-    nsp_metric.reset()
-
 
     # test local reduction
     local_reduction_array = mx.nd.array([float(rank), float(rank), float(rank)]).as_in_context(ctx)
@@ -141,6 +133,14 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx):
                 local_reduction = False)
     mx.nd.waitall()
     logging.info('local_reduction_array after global allreduce: {}'.format(local_reduction_array.asnumpy()))
+
+    """Training function."""
+    hvd.broadcast_parameters(model.collect_params(), root_rank=0)
+
+    mlm_metric = nlp.metric.MaskedAccuracy()
+    nsp_metric = nlp.metric.MaskedAccuracy()
+    mlm_metric.reset()
+    nsp_metric.reset()
 
     logging.debug('Creating distributed trainer...')
     lr = args.lr
