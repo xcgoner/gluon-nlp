@@ -134,6 +134,8 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx):
     mx.nd.waitall()
     logging.info('local_reduction_array after global allreduce: {}'.format(local_reduction_array.asnumpy()))
 
+    return
+
     """Training function."""
     hvd.broadcast_parameters(model.collect_params(), root_rank=0)
 
@@ -358,9 +360,9 @@ if __name__ == '__main__':
                                     num_parts=num_parts, part_idx=part_idx,
                                     prefetch=not args.dummy_data_len)
         train(data_train, data_eval, model, nsp_loss, mlm_loss, len(vocab), ctx)
-    if data_eval:
-        # eval data is always based on a fixed npz file.
-        dataset_eval = get_pretrain_data_npz(data_eval, args.batch_size_eval, 1,
-                                             False, False, 1)
-        evaluate(dataset_eval, model, nsp_loss, mlm_loss, len(vocab), [ctx],
-                 args.log_interval, args.dtype)
+    # if data_eval:
+    #     # eval data is always based on a fixed npz file.
+    #     dataset_eval = get_pretrain_data_npz(data_eval, args.batch_size_eval, 1,
+    #                                          False, False, 1)
+    #     evaluate(dataset_eval, model, nsp_loss, mlm_loss, len(vocab), [ctx],
+    #              args.log_interval, args.dtype)
