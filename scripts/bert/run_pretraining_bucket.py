@@ -43,6 +43,8 @@ from pretraining_utils import get_model_loss, get_pretrain_data_npz, get_dummy_d
 from pretraining_utils import log, evaluate, forward, split_and_load, get_argparser
 from pretraining_utils import save_parameters, save_states
 
+import numpy as np
+
 # arg parser
 parser = get_argparser()
 parser.add_argument('--gpus', type=str, default='0', help='List of GPUs to use. e.g. 1,3')
@@ -137,6 +139,8 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
     num_ctxes = len(ctx)
     parallel = nlp.utils.Parallel(num_ctxes if num_ctxes > 1 else 0, parallel_model)
 
+    latency_list = []
+
     while step_num < num_train_steps:
         for _, dataloader in enumerate(data_train):
             if step_num >= num_train_steps:
@@ -204,7 +208,11 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 # mlm_metric.update(mask_label_list, mask_pred_list, mask_weight_list)
 
                 mx.nd.waitall()
-                logging.info("latency={}".format((time.time()-batch_begin_time)))
+                latency = (time.time()-batch_begin_time) * 1000
+                logging.info("latency={}".format((latency)))
+                latency_list.append(latency)
+                latency_array = np.array(latency_list)
+                logging.info("latency: avg={}, std={}".format((np.mean(latency_array), np.std(latency_array))))
 
                 # # logging
                 # if (step_num + 1) % (args.log_interval) == 0 and (batch_num + 1) % accumulate == 0:
