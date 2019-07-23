@@ -201,7 +201,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 # mlm_metric.update(mask_label_list, mask_pred_list, mask_weight_list)
 
                 mx.nd.waitall()
-                logging.info("batch_size={}, latency={}".format((data[0].shape, time.time()-batch_begin_time)))
+                logging.info("batch_size={}, latency={}".format((data_list[0].shape, time.time()-batch_begin_time)))
 
                 # # logging
                 # if (step_num + 1) % (args.log_interval) == 0 and (batch_num + 1) % accumulate == 0:
