@@ -371,12 +371,12 @@ class FixedBucketSampler(Sampler):
             bucket_average_lengths, bucket_length_stds = _bucket_stats(self._bucket_sample_ids,
                                                                        self._lengths)
             # fix integer division
-            self._bucket_batch_sizes = [max(int(1.0 * batch_size / min((average_length + length_std), max_length)), 1)
-                                        for average_length, length_std, max_length
-                                        in zip(bucket_average_lengths, bucket_length_stds, self._bucket_keys)]
-            # self._bucket_batch_sizes = [max(int(1.0 * batch_size / (average_length + length_std)), 1)
+            # self._bucket_batch_sizes = [max(int(1.0 * batch_size / min((average_length + length_std), max_length)), 1)
             #                             for average_length, length_std, max_length
             #                             in zip(bucket_average_lengths, bucket_length_stds, self._bucket_keys)]
+            self._bucket_batch_sizes = [max(int(1.0 * batch_size / (average_length + length_std)), 1)
+                                        for average_length, length_std, max_length
+                                        in zip(bucket_average_lengths, bucket_length_stds, self._bucket_keys)]
         self._batch_infos = []
         for bucket_id, sample_ids, bucket_batch_size in\
                 zip(range(len(self._bucket_keys) - 1, -1, -1),
