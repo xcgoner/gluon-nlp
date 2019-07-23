@@ -208,10 +208,12 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 # mlm_metric.update(mask_label_list, mask_pred_list, mask_weight_list)
 
                 mx.nd.waitall()
-                latency = (time.time()-batch_begin_time) * 1000
-                latency_list.append(latency)
-                latency_array = np.array(latency_list)
-                logging.info("batch_size={}, latency={}, avg={}, std={}".format(data_list[0][0].shape, latency, np.asscalar(np.mean(latency_array)), np.asscalar(np.std(latency_array))))
+
+                if batch_num > 20:
+                    latency = (time.time()-batch_begin_time) * 1000
+                    latency_list.append(latency)
+                    latency_array = np.array(latency_list)
+                    logging.info("batch_size={}, latency={}, avg={}, std={}".format(data_list[0][0].shape, latency, np.asscalar(np.mean(latency_array)), np.asscalar(np.std(latency_array))))
 
                 # # logging
                 # if (step_num + 1) % (args.log_interval) == 0 and (batch_num + 1) % accumulate == 0:
