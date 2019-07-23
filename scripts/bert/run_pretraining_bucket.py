@@ -211,7 +211,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
 
                 if batch_num > 20:
                     latency = (time.time()-batch_begin_time) * 1000
-                    if latency > 100:
+                    if data_list[0][0].shape[0] in dataloader._batch_sampler._sampler._bucket_batch_sizes:
                         latency_list.append(latency)
                         latency_array = np.array(latency_list)
                         min_latency = np.asscalar(np.min(latency_array))
