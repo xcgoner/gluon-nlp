@@ -175,12 +175,14 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 ns_label_list, ns_pred_list = [], []
                 mask_label_list, mask_pred_list, mask_weight_list = [], [], []
 
+                for data in data_list:
+                    logging.info("batch_size={}".format((data[0].shape)))
+
                 mx.nd.waitall()
                 batch_begin_time = time.time()
 
                 # parallel forward / backward
                 for data in data_list:
-                    logging.info("batch_size={}".format((data[0].shape)))
                     parallel.put(data)
                 for _ in range(len(ctx)):
                     (_, next_sentence_label, classified, masked_id,
@@ -202,7 +204,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 # mlm_metric.update(mask_label_list, mask_pred_list, mask_weight_list)
 
                 mx.nd.waitall()
-                logging.info("batch_size={}, latency={}".format((data_list[0][0].shape, time.time()-batch_begin_time)))
+                logging.info("latency={}".format((time.time()-batch_begin_time)))
 
                 # # logging
                 # if (step_num + 1) % (args.log_interval) == 0 and (batch_num + 1) % accumulate == 0:
