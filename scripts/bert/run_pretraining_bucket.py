@@ -234,6 +234,8 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 #     save_states(step_num, trainer, args.ckpt_dir)
                 #     save_parameters(step_num, model, args.ckpt_dir)
                 batch_num += 1
+    # run single epoch
+    break
     if store.rank == 0:
         save_states(step_num, trainer, args.ckpt_dir)
         save_parameters(step_num, model, args.ckpt_dir)
