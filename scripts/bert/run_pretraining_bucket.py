@@ -180,7 +180,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
 
                 # parallel forward / backward
                 for data in data_list:
-                    logging.info("batch_size={}".format((data.shape)))
+                    logging.info("batch_size={}".format((data[0].shape)))
                     parallel.put(data)
                 for _ in range(len(ctx)):
                     (_, next_sentence_label, classified, masked_id,
