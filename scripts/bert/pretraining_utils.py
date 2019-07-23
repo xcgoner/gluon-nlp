@@ -236,6 +236,7 @@ class BERTLoaderTransform(object):
                                                   shuffle=self._shuffle,
                                                   use_average_length=True,
                                                   num_shards=self._num_ctxes)
+            logging.info('Train Batch Sampler:\n%s', sampler.stats())
             dataloader = nlp.data.ShardedDataLoader(dataset,
                                                     batch_sampler=sampler,
                                                     batchify_fn=batchify_fn,

@@ -370,7 +370,8 @@ class FixedBucketSampler(Sampler):
                 warnings.warn('ratio=%f is ignored when use_average_length is True' % self._ratio)
             bucket_average_lengths, bucket_length_stds = _bucket_stats(self._bucket_sample_ids,
                                                                        self._lengths)
-            self._bucket_batch_sizes = [max(int(batch_size / (average_length + length_std)), 1)
+            # fix integer division
+            self._bucket_batch_sizes = [max(int(1.0 * batch_size / (average_length + length_std)), 1)
                                         for average_length, length_std
                                         in zip(bucket_average_lengths, bucket_length_stds)]
         self._batch_infos = []
