@@ -175,6 +175,9 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 ns_label_list, ns_pred_list = [], []
                 mask_label_list, mask_pred_list, mask_weight_list = [], [], []
 
+                mx.nd.waitall()
+                batch_begin_time = time.time()
+
                 # parallel forward / backward
                 for data in data_list:
                     parallel.put(data)
@@ -190,26 +193,31 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                     running_nsp_loss += ls2.as_in_context(mx.cpu()) / num_ctxes
                     running_num_tks += valid_length.sum().as_in_context(mx.cpu())
 
-                # update
-                if (batch_num + 1) % accumulate == 0:
-                    fp16_trainer.step(1, max_norm=1)
-                nsp_metric.update(ns_label_list, ns_pred_list)
-                mlm_metric.update(mask_label_list, mask_pred_list, mask_weight_list)
-                # logging
-                if (step_num + 1) % (args.log_interval) == 0 and (batch_num + 1) % accumulate == 0:
-                    log(begin_time, running_num_tks, running_mlm_loss / accumulate,
-                        running_nsp_loss / accumulate, step_num, mlm_metric,
-                        nsp_metric, trainer, args.log_interval)
-                    begin_time = time.time()
-                    running_mlm_loss = running_nsp_loss = running_num_tks = 0
-                    mlm_metric.reset_local()
-                    nsp_metric.reset_local()
+                # disable optimizer to benchmark bucketing
+                # # update
+                # if (batch_num + 1) % accumulate == 0:
+                #     fp16_trainer.step(1, max_norm=1)
+                # nsp_metric.update(ns_label_list, ns_pred_list)
+                # mlm_metric.update(mask_label_list, mask_pred_list, mask_weight_list)
 
-                # saving checkpoints
-                if (step_num + 1) % args.ckpt_interval == 0 \
-                   and (batch_num + 1) % accumulate == 0 and store.rank == 0:
-                    save_states(step_num, trainer, args.ckpt_dir)
-                    save_parameters(step_num, model, args.ckpt_dir)
+                mx.nd.waitall()
+                logging.info("batch_size={}, latency={}".format((data[0].shape, time.time()-batch_begin_time)))
+
+                # # logging
+                # if (step_num + 1) % (args.log_interval) == 0 and (batch_num + 1) % accumulate == 0:
+                #     log(begin_time, running_num_tks, running_mlm_loss / accumulate,
+                #         running_nsp_loss / accumulate, step_num, mlm_metric,
+                #         nsp_metric, trainer, args.log_interval)
+                #     begin_time = time.time()
+                #     running_mlm_loss = running_nsp_loss = running_num_tks = 0
+                #     mlm_metric.reset_local()
+                #     nsp_metric.reset_local()
+
+                # # saving checkpoints
+                # if (step_num + 1) % args.ckpt_interval == 0 \
+                #    and (batch_num + 1) % accumulate == 0 and store.rank == 0:
+                #     save_states(step_num, trainer, args.ckpt_dir)
+                #     save_parameters(step_num, model, args.ckpt_dir)
                 batch_num += 1
     if store.rank == 0:
         save_states(step_num, trainer, args.ckpt_dir)
