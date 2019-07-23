@@ -212,7 +212,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 logging.info("latency={}".format((latency)))
                 latency_list.append(latency)
                 latency_array = np.array(latency_list)
-                logging.info("latency: avg={}, std={}".format((np.mean(latency_array), np.std(latency_array))))
+                logging.info("latency: avg={}, std={}".format((np.asscalar(np.mean(latency_array)), np.asscalar(np.std(latency_array)))))
 
                 # # logging
                 # if (step_num + 1) % (args.log_interval) == 0 and (batch_num + 1) % accumulate == 0:
