@@ -179,8 +179,8 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 ns_label_list, ns_pred_list = [], []
                 mask_label_list, mask_pred_list, mask_weight_list = [], [], []
 
-                for data in data_list:
-                    logging.info("batch_size={}".format((data[0].shape)))
+                # for data in data_list:
+                #     logging.info("batch_size={}".format((data[0].shape)))
 
                 mx.nd.waitall()
                 batch_begin_time = time.time()
@@ -209,10 +209,10 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
 
                 mx.nd.waitall()
                 latency = (time.time()-batch_begin_time) * 1000
-                logging.info("latency={}".format((latency)))
-                latency_list.append(latency)
-                latency_array = np.array(latency_list)
-                logging.info("latency: avg={}, std={}".format((np.asscalar(np.mean(latency_array)), np.asscalar(np.std(latency_array)))))
+                logging.info("batch_size={}, latency={}".format(data_list[0][0].shape, latency))
+                # latency_list.append(latency)
+                # latency_array = np.array(latency_list)
+                # logging.info("latency: avg={}, std={}".format((np.asscalar(np.mean(latency_array)), np.asscalar(np.std(latency_array)))))
 
                 # # logging
                 # if (step_num + 1) % (args.log_interval) == 0 and (batch_num + 1) % accumulate == 0:
