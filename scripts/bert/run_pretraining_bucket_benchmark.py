@@ -163,6 +163,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 num_samples = data[0].shape[0]
                 dummy_pad = mx.nd.zeros((num_samples, 1), ctx[0], dtype='float32')
                 logging.info(data[0].dtype)
+                logging.info(data[5].dtype)
                 data[0] = mx.nd.concat(data[0], dummy_pad, dim=1)
                 data[5] = mx.nd.concat(data[5], dummy_pad, dim=1)
 
