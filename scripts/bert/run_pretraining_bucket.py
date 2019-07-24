@@ -94,6 +94,70 @@ class ParallelBERT(nlp.utils.Parallelizable):
         return ls, next_sentence_label, classified, masked_id, decoded, \
                masked_weight, ls1, ls2, valid_length
 
+def evaluate(dataloader, num_gpus):
+    batch_num = 0
+    iter_num = 0
+    latency_list = []
+    gap_list = []
+    for _, data_batch in enumerate(dataloader):
+        if args.use_avg_len:
+            data_list = [[seq.as_in_context(context) for seq in shard]
+                            for context, shard in zip(ctx, data_batch)]
+        else:
+            if data_batch[0].shape[0] < len(ctx):
+                continue
+            data_list = split_and_load(data_batch, ctx)
+
+        if batch_num == 0:
+            # initialize bucket info
+            bucket_batch_sizes = dataloader._batch_sampler._bucket_batch_sizes
+            bucket_keys = dataloader._batch_sampler._bucket_keys
+            bucket_batch_sizes_array = np.array(bucket_batch_sizes, dtype='float32')
+            bucket_keys_array = np.array(bucket_keys, dtype='float32')
+
+            # benchmark the ideal case
+            max_bucket_key = max(bucket_keys)
+            max_bucket_batch_size = bucket_batch_sizes[np.argmax(bucket_keys_array)]
+            assert max_bucket_key == bucket_keys[-1]
+            assert max_bucket_batch_size == bucket_batch_sizes[-1]
+
+        bucket_idx = np.argmax(bucket_keys_array >= data_list[0][0].shape[1])
+        if iter_num > bucket_drop_iterations and \
+            data_list[0][0].shape[0] != bucket_batch_sizes[bucket_idx]:
+            # ignore abnormal samples
+            continue
+
+        mx.nd.waitall()
+        batch_begin_time = time.time()
+
+        # parallel forward / backward
+        for data in data_list:
+            parallel.put(data)
+        for _ in range(len(ctx)):
+            (_, next_sentence_label, classified, masked_id,
+                decoded, masked_weight, ls1, ls2, valid_length) = parallel.get()
+
+        mx.nd.waitall()
+
+        iter_num += 1
+        if iter_num <= bucket_drop_iterations:
+            continue
+
+        latency = (time.time()-batch_begin_time) * 1000
+        latency_list.append(latency)
+
+        if iter_num % num_gpus == num_gpus - 1:
+            latency_array = np.array(latency_list)
+            min_latency = np.asscalar(np.min(latency_array))
+            max_latency = np.asscalar(np.max(latency_array))
+            gap = max_latency - min_latency
+            gap_list.append(gap)
+            gap_array = np.array(gap_list)
+            latency_list = []
+            # logging.info("iter_num={}, gap={}, avg={}, std={}, min={}, max={}".format(iter_num, gap, np.asscalar(np.mean(gap_array)), np.asscalar(np.std(gap_array)), np.asscalar(np.min(gap_array)), np.asscalar(np.max(gap_array))))
+        batch_num += 1
+    return gap_array
+
 def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
     """Training function."""
     mlm_metric = nlp.metric.MaskedAccuracy()
@@ -284,6 +348,9 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                     break
 
                 batch_num += 1
+
+            gap_array = evaluate(dataloader, 8)
+            logging.info('Evaluation: avg gap={}'.format(np.asscalar(np.mean(gap_array))))
             break
 
 if __name__ == '__main__':
