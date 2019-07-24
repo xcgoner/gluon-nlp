@@ -174,6 +174,9 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 assert max_bucket_key == bucket_keys[-1]
                 assert max_bucket_batch_size == bucket_batch_sizes[-1]
 
+            if batch_num == 2000:
+                break
+
             mx.nd.waitall()
             batch_begin_time = time.time()
 
@@ -195,6 +198,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                     max_latency = np.asscalar(np.max(benchmark_latency_array))
                     logging.info("batch_num={}, batch_size={}, latency={}, avg={}, std={}, min={}, max={}, gap={}".format(batch_num, data_list[0][0].shape, latency, np.asscalar(np.mean(benchmark_latency_array)), np.asscalar(np.std(benchmark_latency_array)), min_latency, max_latency, max_latency-min_latency))
             batch_num += 1
+        break
     
     benchmark_latency = np.asscalar(np.mean(benchmark_latency_array))
     benchmark_latency_gap = max(benchmark_latency_list) - min(benchmark_latency_list)
@@ -203,7 +207,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
 
     bucket_step_num = 0
 
-    for epoch in range(args.epochs):
+    for epoch in range(args.bucket_epochs):
         batch_num = 0
         iter_num = 0
         latency_list = []
