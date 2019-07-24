@@ -188,7 +188,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
 
                 if batch_num > bucket_drop_iterations:
                     latency = (time.time()-batch_begin_time) * 1000
-                    if data_list[0][0].shape[0] == max_bucket_batch_size and data_list[0][0].shape[1] == max_bucket_key:
+                    if data_list[0][0].shape[0] in bucket_batch_sizes:
                         benchmark_latency_list.append(latency)
                         benchmark_latency_array = np.array(benchmark_latency_list)
                         min_latency = np.asscalar(np.min(benchmark_latency_array))
