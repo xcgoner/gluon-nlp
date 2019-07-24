@@ -94,7 +94,7 @@ class ParallelBERT(nlp.utils.Parallelizable):
         return ls, next_sentence_label, classified, masked_id, decoded, \
                masked_weight, ls1, ls2, valid_length
 
-def evaluate(dataloader, num_gpus):
+def evaluate(dataloader, num_gpus, bucket_drop_iterations):
     batch_num = 0
     iter_num = 0
     latency_list = []
@@ -349,7 +349,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
 
                 batch_num += 1
 
-            gap_array = evaluate(dataloader, 8)
+            gap_array = evaluate(dataloader, 8, bucket_drop_iterations)
             logging.info('Evaluation: avg gap={}'.format(np.asscalar(np.mean(gap_array))))
             break
 
