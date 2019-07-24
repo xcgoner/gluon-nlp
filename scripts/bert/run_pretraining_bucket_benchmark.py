@@ -159,8 +159,8 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
             if batch_num == 200:
                 break
 
-            logging.info(len(data_list))
-            logging.info(len(data_list[0]))
+            for data in data_list[0]:
+                logging.info(data.shape)
 
             data_list[0][0] = mx.nd.zeros((8,256), ctx[0]) + 0.2
 
