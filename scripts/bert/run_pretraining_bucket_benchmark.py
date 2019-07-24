@@ -159,10 +159,11 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
             if batch_num == 200:
                 break
 
-            num_samples = data_batch[0].shape[0]
-            dummy_pad = mx.nd.zeros((num_samples, 1), ctx[0])
-            data_list[0][0] = mx.nd.concat(data_list[0][0], dummy_pad, dim=1)
-            data_list[0][5] = mx.nd.concat(data_list[0][5], dummy_pad, dim=1)
+            for data in data_list:
+                num_samples = data.shape[0]
+                dummy_pad = mx.nd.zeros((num_samples, 1), ctx[0])
+                data[0] = mx.nd.concat(data[0], dummy_pad, dim=1)
+                data[5] = mx.nd.concat(data[5], dummy_pad, dim=1)
 
             mx.nd.waitall()
             batch_begin_time = time.time()
