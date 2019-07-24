@@ -159,11 +159,10 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
             if batch_num == 200:
                 break
 
-            # for data in data_list[0]:
-            #     logging.info(data.shape)
-
-            data_list[0][0] = mx.nd.zeros((8,256), ctx[0]) + 0.2
-            data_list[0][5] = mx.nd.zeros((8,256), ctx[0]) + 0.2
+            num_samples = data_batch[0].shape[0]
+            dummy_pad = mx.nd.zeros((num_samples, 1), ctx[0])
+            data_list[0][0] = mx.nd.concat(data_list[0][0], dummy_pad, dim=1)
+            data_list[0][5] = mx.nd.concat(data_list[0][5], dummy_pad, dim=1)
 
             mx.nd.waitall()
             batch_begin_time = time.time()
@@ -183,7 +182,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 benchmark_latency_array = np.array(benchmark_latency_list)
                 min_latency = np.asscalar(np.min(benchmark_latency_array))
                 max_latency = np.asscalar(np.max(benchmark_latency_array))
-                logging.info("batch_num={}, batch_size={}, latency={}, avg={}, std={}, min={}, max={}, gap={}".format(batch_num, data_list[0][0].shape, latency, np.asscalar(np.mean(benchmark_latency_array)), np.asscalar(np.std(benchmark_latency_array)), min_latency, max_latency, max_latency-min_latency))
+                logging.info("batch_num={}, batch_size={}, latency={}, avg={}, std={}, min={}, max={}, gap={}".format(batch_num, data_list[0].shape, latency, np.asscalar(np.mean(benchmark_latency_array)), np.asscalar(np.std(benchmark_latency_array)), min_latency, max_latency, max_latency-min_latency))
             batch_num += 1
         break
     
