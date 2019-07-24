@@ -159,7 +159,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
             if batch_num == 200:
                 break
 
-            data_list[0][0] = mx.nd.zeros((8,256)) + 0.2
+            data_list[0][0] = mx.nd.zeros((8,256), ctx[0]) + 0.2
 
             mx.nd.waitall()
             batch_begin_time = time.time()
