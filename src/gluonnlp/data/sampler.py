@@ -24,6 +24,7 @@ __all__ = ['ConstWidthBucket', 'LinearWidthBucket', 'ExpWidthBucket',
 
 import math
 import warnings
+import logging
 import random
 import numpy as np
 from mxnet.gluon.data import Sampler
