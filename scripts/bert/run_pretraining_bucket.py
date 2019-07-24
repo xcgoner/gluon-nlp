@@ -278,7 +278,7 @@ if __name__ == '__main__':
                                                       ckpt_dir=args.ckpt_dir,
                                                       start_step=args.start_step)
 
-    store = mx.kv.create(args.kvstore)
+    store = mx.kv.create('device')
     nlp.utils.mkdir(args.ckpt_dir)
 
     if args.data:
