@@ -213,6 +213,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
         latency_list = []
         bucket_grad = np.zeros_like(bucket_batch_sizes_array, dtype='float32')
         grad_counter = np.zeros_like(bucket_batch_sizes_array, dtype='float32')
+        grad_counter[-1] = 1
 
         for _, dataloader in enumerate(data_train):
             # create dummy data loader if needed
