@@ -174,7 +174,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 assert max_bucket_key == bucket_keys[-1]
                 assert max_bucket_batch_size == bucket_batch_sizes[-1]
 
-            if batch_num == 2000:
+            if batch_num == 200:
                 break
 
             mx.nd.waitall()
