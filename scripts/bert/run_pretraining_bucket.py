@@ -212,6 +212,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
         iter_num = 0
         latency_list = []
         bucket_grad = np.zeros_like(bucket_batch_sizes_array, dtype='float32')
+        grad_counter = np.zeros_like(bucket_batch_sizes_array, dtype='float32')
 
         for _, dataloader in enumerate(data_train):
             # create dummy data loader if needed
@@ -258,6 +259,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 grad = latency - benchmark_latency
                 bucket_idx = np.argmax(bucket_keys_array >= data_list[0][0].shape[1])
                 bucket_grad[bucket_idx] += grad
+                grad_counter[bucket_idx] += 1.0
 
                 latency_list.append(latency)
                 latency_array = np.array(latency_list)
@@ -267,9 +269,15 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
 
                 if batch_num == args.bucket_batchsize - 1:
                     # gradient descent
-                    bucket_batch_sizes_array -= (args.bucket_lr * bucket_grad / args.bucket_batchsize)
+                    bucket_batch_sizes_array -= (args.bucket_lr * bucket_grad / grad_counter)
                     # update dataloader
-                    bucket_batch_sizes = bucket_batch_sizes_array.round().astype('int').tolist()
+                    # round to 0.6
+                    bucket_batch_sizes_array_base = np.floor(bucket_batch_sizes_array)
+                    bucket_batch_sizes_array_residual = bucket_batch_sizes_array - bucket_batch_sizes_array_base
+                    bucket_batch_sizes_array_residual = bucket_batch_sizes_array_residual > 0.6
+                    bucket_batch_sizes_array_residual = bucket_batch_sizes_array_residual.astype('float32')
+                    bucket_batch_sizes_array_round = bucket_batch_sizes_array_base + bucket_batch_sizes_array_residual
+                    bucket_batch_sizes = bucket_batch_sizes_array_round.astype('int').tolist()
                     dataloader._batch_sampler._bucket_batch_sizes = bucket_batch_sizes
                     break
 
