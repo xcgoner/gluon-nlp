@@ -158,19 +158,6 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                         continue
                     data_list = split_and_load(data_batch, ctx)
 
-                if batch_num == 0 and epoch == 0:
-                    # initialize bucket info
-                    bucket_batch_sizes = dataloader._batch_sampler._bucket_batch_sizes
-                    bucket_keys = dataloader._batch_sampler._bucket_keys
-                    bucket_batch_sizes_array = np.array(bucket_batch_sizes, dtype='float32')
-                    bucket_keys_array = np.array(bucket_keys, dtype='float32')
-
-                    # benchmark the ideal case
-                    max_bucket_key = max(bucket_keys)
-                    max_bucket_batch_size = bucket_batch_sizes[np.argmax(bucket_keys_array)]
-                    assert max_bucket_key == bucket_keys[-1]
-                    assert max_bucket_batch_size == bucket_batch_sizes[-1]
-
                 if batch_num == 200:
                     break
 
@@ -188,12 +175,11 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
 
                 if batch_num > bucket_drop_iterations:
                     latency = (time.time()-batch_begin_time) * 1000
-                    if data_list[0][0].shape[0] in bucket_batch_sizes:
-                        benchmark_latency_list.append(latency)
-                        benchmark_latency_array = np.array(benchmark_latency_list)
-                        min_latency = np.asscalar(np.min(benchmark_latency_array))
-                        max_latency = np.asscalar(np.max(benchmark_latency_array))
-                        logging.info("batch_num={}, batch_size={}, latency={}, avg={}, std={}, min={}, max={}, gap={}".format(batch_num, data_list[0][0].shape, latency, np.asscalar(np.mean(benchmark_latency_array)), np.asscalar(np.std(benchmark_latency_array)), min_latency, max_latency, max_latency-min_latency))
+                    benchmark_latency_list.append(latency)
+                    benchmark_latency_array = np.array(benchmark_latency_list)
+                    min_latency = np.asscalar(np.min(benchmark_latency_array))
+                    max_latency = np.asscalar(np.max(benchmark_latency_array))
+                    logging.info("batch_num={}, batch_size={}, latency={}, avg={}, std={}, min={}, max={}, gap={}".format(batch_num, data_list[0][0].shape, latency, np.asscalar(np.mean(benchmark_latency_array)), np.asscalar(np.std(benchmark_latency_array)), min_latency, max_latency, max_latency-min_latency))
                 batch_num += 1
     
     benchmark_latency = np.asscalar(np.mean(benchmark_latency_array))
