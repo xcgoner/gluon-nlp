@@ -139,17 +139,6 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
     num_ctxes = len(ctx)
     parallel = nlp.utils.Parallel(num_ctxes if num_ctxes > 1 else 0, parallel_model)
 
-    # initialize bucket info
-    bucket_batch_sizes = data_train[0]._batch_sampler._bucket_batch_sizes
-    bucket_keys = data_train[0]._batch_sampler._bucket_keys
-    bucket_batch_sizes_array = np.array(bucket_batch_sizes, dtype='int')
-    bucket_keys_array = np.array(bucket_keys, dtype='int')
-
-    # benchmark the ideal case
-    max_bucket_key = max(bucket_keys)
-    max_bucket_batch_size = bucket_batch_sizes[np.argmax(bucket_keys_array)]
-    assert max_bucket_key == bucket_keys[-1]
-    assert max_bucket_batch_size == bucket_batch_sizes[-1]
     batch_num = 0
     benchmark_latency_list = []
     for _, dataloader in enumerate(data_train):
@@ -166,6 +155,19 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 if data_batch[0].shape[0] < len(ctx):
                     continue
                 data_list = split_and_load(data_batch, ctx)
+
+            if batch_num == 0:
+                # initialize bucket info
+                bucket_batch_sizes = dataloader._batch_sampler._bucket_batch_sizes
+                bucket_keys = dataloader._batch_sampler._bucket_keys
+                bucket_batch_sizes_array = np.array(bucket_batch_sizes, dtype='int')
+                bucket_keys_array = np.array(bucket_keys, dtype='int')
+
+                # benchmark the ideal case
+                max_bucket_key = max(bucket_keys)
+                max_bucket_batch_size = bucket_batch_sizes[np.argmax(bucket_keys_array)]
+                assert max_bucket_key == bucket_keys[-1]
+                assert max_bucket_batch_size == bucket_batch_sizes[-1]
 
             mx.nd.waitall()
             batch_begin_time = time.time()
