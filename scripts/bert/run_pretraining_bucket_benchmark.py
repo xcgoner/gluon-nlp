@@ -160,7 +160,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 break
 
             for data in data_list:
-                num_samples = data.shape[0]
+                num_samples = data[0].shape[0]
                 dummy_pad = mx.nd.zeros((num_samples, 1), ctx[0])
                 data[0] = mx.nd.concat(data[0], dummy_pad, dim=1)
                 data[5] = mx.nd.concat(data[5], dummy_pad, dim=1)
