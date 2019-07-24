@@ -48,7 +48,6 @@ import numpy as np
 # arg parser
 parser = get_argparser()
 parser.add_argument('--gpus', type=str, default='0', help='List of GPUs to use. e.g. 1,3')
-parser.add_argument('--bucket_epochs', type=int, default=10, help='epochs for bucket benchmark')
 args = parser.parse_args()
 
 os.environ['MXNET_KVSTORE_USETREE'] = '1'
@@ -142,45 +141,45 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
 
     batch_num = 0
     benchmark_latency_list = []
-    for epoch in range(args.bucket_epochs):
-        for _, dataloader in enumerate(data_train):
-            # create dummy data loader if needed
-            if args.dummy_data_len:
-                target_shape = (args.batch_size*num_ctxes, args.dummy_data_len)
-                dataloader = get_dummy_dataloader(dataloader, target_shape)
+    for _, dataloader in enumerate(data_train):
+        # create dummy data loader if needed
+        if args.dummy_data_len:
+            target_shape = (args.batch_size*num_ctxes, args.dummy_data_len)
+            dataloader = get_dummy_dataloader(dataloader, target_shape)
 
-            for _, data_batch in enumerate(dataloader):
-                if args.use_avg_len:
-                    data_list = [[seq.as_in_context(context) for seq in shard]
-                                    for context, shard in zip(ctx, data_batch)]
-                else:
-                    if data_batch[0].shape[0] < len(ctx):
-                        continue
-                    data_list = split_and_load(data_batch, ctx)
+        for _, data_batch in enumerate(dataloader):
+            if args.use_avg_len:
+                data_list = [[seq.as_in_context(context) for seq in shard]
+                                for context, shard in zip(ctx, data_batch)]
+            else:
+                if data_batch[0].shape[0] < len(ctx):
+                    continue
+                data_list = split_and_load(data_batch, ctx)
 
-                if batch_num == 200:
-                    break
+            if batch_num == 200:
+                break
 
-                mx.nd.waitall()
-                batch_begin_time = time.time()
+            mx.nd.waitall()
+            batch_begin_time = time.time()
 
-                # parallel forward / backward
-                for data in data_list:
-                    parallel.put(data)
-                for _ in range(len(ctx)):
-                    (_, next_sentence_label, classified, masked_id,
-                        decoded, masked_weight, ls1, ls2, valid_length) = parallel.get()
+            # parallel forward / backward
+            for data in data_list:
+                parallel.put(data)
+            for _ in range(len(ctx)):
+                (_, next_sentence_label, classified, masked_id,
+                    decoded, masked_weight, ls1, ls2, valid_length) = parallel.get()
 
-                mx.nd.waitall()
+            mx.nd.waitall()
 
-                if batch_num > bucket_drop_iterations:
-                    latency = (time.time()-batch_begin_time) * 1000
-                    benchmark_latency_list.append(latency)
-                    benchmark_latency_array = np.array(benchmark_latency_list)
-                    min_latency = np.asscalar(np.min(benchmark_latency_array))
-                    max_latency = np.asscalar(np.max(benchmark_latency_array))
-                    logging.info("batch_num={}, batch_size={}, latency={}, avg={}, std={}, min={}, max={}, gap={}".format(batch_num, data_batch[0].shape, latency, np.asscalar(np.mean(benchmark_latency_array)), np.asscalar(np.std(benchmark_latency_array)), min_latency, max_latency, max_latency-min_latency))
-                batch_num += 1
+            if batch_num > bucket_drop_iterations:
+                latency = (time.time()-batch_begin_time) * 1000
+                benchmark_latency_list.append(latency)
+                benchmark_latency_array = np.array(benchmark_latency_list)
+                min_latency = np.asscalar(np.min(benchmark_latency_array))
+                max_latency = np.asscalar(np.max(benchmark_latency_array))
+                logging.info("batch_num={}, batch_size={}, latency={}, avg={}, std={}, min={}, max={}, gap={}".format(batch_num, data_batch[0].shape, latency, np.asscalar(np.mean(benchmark_latency_array)), np.asscalar(np.std(benchmark_latency_array)), min_latency, max_latency, max_latency-min_latency))
+            batch_num += 1
+        break
     
     benchmark_latency = np.asscalar(np.mean(benchmark_latency_array))
     benchmark_latency_gap = max(benchmark_latency_list) - min(benchmark_latency_list)
