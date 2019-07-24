@@ -177,7 +177,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 benchmark_latency_array = np.array(benchmark_latency_list)
                 min_latency = np.asscalar(np.min(benchmark_latency_array))
                 max_latency = np.asscalar(np.max(benchmark_latency_array))
-                logging.info("batch_num={}, batch_size={}, latency={}, avg={}, std={}, min={}, max={}, gap={}".format(batch_num, data_batch[0].shape, latency, np.asscalar(np.mean(benchmark_latency_array)), np.asscalar(np.std(benchmark_latency_array)), min_latency, max_latency, max_latency-min_latency))
+                logging.info("batch_num={}, batch_size={}, latency={}, avg={}, std={}, min={}, max={}, gap={}".format(batch_num, data_list[0][0].shape, latency, np.asscalar(np.mean(benchmark_latency_array)), np.asscalar(np.std(benchmark_latency_array)), min_latency, max_latency, max_latency-min_latency))
             batch_num += 1
         break
     
