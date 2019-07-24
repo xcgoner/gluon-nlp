@@ -140,8 +140,8 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
     parallel = nlp.utils.Parallel(num_ctxes if num_ctxes > 1 else 0, parallel_model)
 
     # initialize bucket info
-    bucket_batch_sizes = dataloader._batch_sampler._bucket_batch_sizes
-    bucket_keys = dataloader._batch_sampler._bucket_keys
+    bucket_batch_sizes = data_train[0]._batch_sampler._bucket_batch_sizes
+    bucket_keys = data_train[0]._batch_sampler._bucket_keys
     bucket_batch_sizes_array = np.array(bucket_batch_sizes, dtype='int')
     bucket_keys_array = np.array(bucket_keys, dtype='int')
 
