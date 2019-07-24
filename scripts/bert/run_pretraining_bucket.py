@@ -48,9 +48,11 @@ import numpy as np
 # arg parser
 parser = get_argparser()
 parser.add_argument('--gpus', type=str, default='0', help='List of GPUs to use. e.g. 1,3')
-parser.add_argument('--kvstore', type=str, default='device', help='KVStore type')
-parser.add_argument('--optimizer', type=str, default='bertadam',
-                    help='optimizer')
+parser.add_argument('--bucket_epochs', type=int, default=1000, help='epochs for bucket optimization')
+parser.add_argument('--bucket_batchsize', type=int, default=400, help='batch size for bucket optimization')
+parser.add_argument('--bucket_lr', type=float, default=0.01, help='learning rate for bucket optimization')
+parser.add_argument('--bucket_lr_decay_epoch', type=str, default='40', help='decay epoch for bucket optimization')
+parser.add_argument('--bucket_lr_decay_rate', type=str, default='0.1', help='decay rate for bucket optimization')
 args = parser.parse_args()
 
 os.environ['MXNET_KVSTORE_USETREE'] = '1'
@@ -139,6 +141,9 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
     num_ctxes = len(ctx)
     parallel = nlp.utils.Parallel(num_ctxes if num_ctxes > 1 else 0, parallel_model)
 
+    # the first several iterations are not accurate
+    bucket_drop_iterations = 20
+
     batch_num = 0
     benchmark_latency_list = []
     for _, dataloader in enumerate(data_train):
@@ -160,8 +165,8 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 # initialize bucket info
                 bucket_batch_sizes = dataloader._batch_sampler._bucket_batch_sizes
                 bucket_keys = dataloader._batch_sampler._bucket_keys
-                bucket_batch_sizes_array = np.array(bucket_batch_sizes, dtype='int')
-                bucket_keys_array = np.array(bucket_keys, dtype='int')
+                bucket_batch_sizes_array = np.array(bucket_batch_sizes, dtype='float32')
+                bucket_keys_array = np.array(bucket_keys, dtype='float32')
 
                 # benchmark the ideal case
                 max_bucket_key = max(bucket_keys)
@@ -181,7 +186,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
 
             mx.nd.waitall()
 
-            if batch_num > 20:
+            if batch_num > bucket_drop_iterations:
                 latency = (time.time()-batch_begin_time) * 1000
                 if data_list[0][0].shape[0] == max_bucket_batch_size and data_list[0][0].shape[1] == max_bucket_key:
                     benchmark_latency_list.append(latency)
@@ -191,50 +196,38 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                     logging.info("batch_num={}, batch_size={}, latency={}, avg={}, std={}, min={}, max={}, gap={}".format(batch_num, data_list[0][0].shape, latency, np.asscalar(np.mean(benchmark_latency_array)), np.asscalar(np.std(benchmark_latency_array)), min_latency, max_latency, max_latency-min_latency))
             batch_num += 1
     
-    return
+    benchmark_latency = np.asscalar(np.mean(benchmark_latency_array))
+    benchmark_latency_gap = max(benchmark_latency_list) - min(benchmark_latency_list)
 
-    latency_list = []
 
-    while step_num < num_train_steps:
+
+    bucket_step_num = 0
+
+    for epoch in range(args.epochs):
+        batch_num = 0
+        iter_num = 0
+        latency_list = []
+        bucket_grad = np.zeros_like(bucket_batch_sizes_array, dtype='float32')
+
         for _, dataloader in enumerate(data_train):
-            if step_num >= num_train_steps:
-                break
-
             # create dummy data loader if needed
             if args.dummy_data_len:
                 target_shape = (args.batch_size*num_ctxes, args.dummy_data_len)
                 dataloader = get_dummy_dataloader(dataloader, target_shape)
 
             for _, data_batch in enumerate(dataloader):
-                if step_num >= num_train_steps:
-                    break
-                if batch_num % accumulate == 0:
-                    step_num += 1
-                    # if accumulate > 1, grad_req is set to 'add', and zero_grad is required
-                    if accumulate > 1:
-                        param_dict.zero_grad()
-                    # update learning rate
-                    if step_num <= num_warmup_steps:
-                        new_lr = lr * step_num / num_warmup_steps
-                    else:
-                        offset = lr * step_num / num_train_steps
-                        new_lr = lr - offset
-                    trainer.set_learning_rate(new_lr)
-                    if args.profile:
-                        profile(step_num, 10, 12, profile_name=args.profile)
                 if args.use_avg_len:
                     data_list = [[seq.as_in_context(context) for seq in shard]
-                                 for context, shard in zip(ctx, data_batch)]
+                                    for context, shard in zip(ctx, data_batch)]
                 else:
                     if data_batch[0].shape[0] < len(ctx):
                         continue
                     data_list = split_and_load(data_batch, ctx)
 
-                ns_label_list, ns_pred_list = [], []
-                mask_label_list, mask_pred_list, mask_weight_list = [], [], []
-
-                # for data in data_list:
-                #     logging.info("batch_size={}".format((data[0].shape)))
+                if iter_num > bucket_drop_iterations and ((data_list[0][0].shape[0] == max_bucket_batch_size and data_list[0][0].shape[1] == max_bucket_key) \
+                    or data_list[0][0].shape[0] not in bucket_batch_sizes):
+                    # ignore abnormal samples
+                    continue
 
                 mx.nd.waitall()
                 batch_begin_time = time.time()
@@ -244,52 +237,37 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                     parallel.put(data)
                 for _ in range(len(ctx)):
                     (_, next_sentence_label, classified, masked_id,
-                     decoded, masked_weight, ls1, ls2, valid_length) = parallel.get()
-                    ns_label_list.append(next_sentence_label)
-                    ns_pred_list.append(classified)
-                    mask_label_list.append(masked_id)
-                    mask_pred_list.append(decoded)
-                    mask_weight_list.append(masked_weight)
-                    running_mlm_loss += ls1.as_in_context(mx.cpu()) / num_ctxes
-                    running_nsp_loss += ls2.as_in_context(mx.cpu()) / num_ctxes
-                    running_num_tks += valid_length.sum().as_in_context(mx.cpu())
-
-                # disable optimizer to benchmark bucketing
-                # # update
-                # if (batch_num + 1) % accumulate == 0:
-                #     fp16_trainer.step(1, max_norm=1)
-                # nsp_metric.update(ns_label_list, ns_pred_list)
-                # mlm_metric.update(mask_label_list, mask_pred_list, mask_weight_list)
+                        decoded, masked_weight, ls1, ls2, valid_length) = parallel.get()
 
                 mx.nd.waitall()
 
-                if batch_num > 20:
-                    latency = (time.time()-batch_begin_time) * 1000
-                    if data_list[0][0].shape[0] in dataloader._batch_sampler._bucket_batch_sizes:
-                        latency_list.append(latency)
-                        latency_array = np.array(latency_list)
-                        min_latency = np.asscalar(np.min(latency_array))
-                        max_latency = np.asscalar(np.max(latency_array))
-                        logging.info("batch_num={}, batch_size={}, latency={}, avg={}, std={}, min={}, max={}, gap={}".format(batch_num, data_list[0][0].shape, latency, np.asscalar(np.mean(latency_array)), np.asscalar(np.std(latency_array)), min_latency, max_latency, max_latency-min_latency))
+                iter_num += 1
+                if iter_num <= bucket_drop_iterations:
+                    continue
 
-                # # logging
-                # if (step_num + 1) % (args.log_interval) == 0 and (batch_num + 1) % accumulate == 0:
-                #     log(begin_time, running_num_tks, running_mlm_loss / accumulate,
-                #         running_nsp_loss / accumulate, step_num, mlm_metric,
-                #         nsp_metric, trainer, args.log_interval)
-                #     begin_time = time.time()
-                #     running_mlm_loss = running_nsp_loss = running_num_tks = 0
-                #     mlm_metric.reset_local()
-                #     nsp_metric.reset_local()
+                latency = (time.time()-batch_begin_time) * 1000
+                
+                # generate quasi gradient
+                grad = latency - benchmark_latency
+                bucket_idx = np.argmax(bucket_keys_array >= data_list[0][0].shape[1])
+                bucket_grad[bucket_idx] += grad
 
-                # # saving checkpoints
-                # if (step_num + 1) % args.ckpt_interval == 0 \
-                #    and (batch_num + 1) % accumulate == 0 and store.rank == 0:
-                #     save_states(step_num, trainer, args.ckpt_dir)
-                #     save_parameters(step_num, model, args.ckpt_dir)
+                latency_list.append(latency)
+                latency_array = np.array(latency_list)
+                min_latency = np.asscalar(np.min(latency_array))
+                max_latency = np.asscalar(np.max(latency_array))
+                logging.info("batch_num={}, batch_size={}, latency={}, avg={}, std={}, min={}, max={}, gap={}".format(batch_num, data_list[0][0].shape, latency, np.asscalar(np.mean(latency_array)), np.asscalar(np.std(latency_array)), min_latency, max_latency, max_latency-min_latency))
+
+                if batch_num == args.bucket_batchsize - 1:
+                    # gradient descent
+                    bucket_batch_sizes_array -= (args.bucket_lr * bucket_grad / args.bucket_batchsize)
+                    # update dataloader
+                    bucket_batch_sizes = bucket_batch_sizes_array.round().astype('int').tolist()
+                    dataloader._batch_sampler._bucket_batch_sizes = bucket_batch_sizes
+                    break
+
                 batch_num += 1
-        # run single epoch
-        break
+            break
 
 if __name__ == '__main__':
     ctx = [mx.cpu()] if args.gpus is None or args.gpus == '' else \
