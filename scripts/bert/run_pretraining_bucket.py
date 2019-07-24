@@ -139,6 +139,58 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
     num_ctxes = len(ctx)
     parallel = nlp.utils.Parallel(num_ctxes if num_ctxes > 1 else 0, parallel_model)
 
+    # initialize bucket info
+    bucket_batch_sizes = dataloader._batch_sampler._bucket_batch_sizes
+    bucket_keys = dataloader._batch_sampler._bucket_keys
+    bucket_batch_sizes_array = np.array(bucket_batch_sizes, dtype='int')
+    bucket_keys_array = np.array(bucket_keys, dtype='int')
+
+    # benchmark the ideal case
+    max_bucket_key = max(bucket_keys)
+    max_bucket_batch_size = bucket_batch_sizes[np.argmax(bucket_keys_array)]
+    assert max_bucket_key == bucket_keys[-1]
+    assert max_bucket_batch_size == bucket_batch_sizes[-1]
+    batch_num = 0
+    benchmark_latency_list = []
+    for _, dataloader in enumerate(data_train):
+        # create dummy data loader if needed
+        if args.dummy_data_len:
+            target_shape = (args.batch_size*num_ctxes, args.dummy_data_len)
+            dataloader = get_dummy_dataloader(dataloader, target_shape)
+
+        for _, data_batch in enumerate(dataloader):
+            if args.use_avg_len:
+                data_list = [[seq.as_in_context(context) for seq in shard]
+                                for context, shard in zip(ctx, data_batch)]
+            else:
+                if data_batch[0].shape[0] < len(ctx):
+                    continue
+                data_list = split_and_load(data_batch, ctx)
+
+            mx.nd.waitall()
+            batch_begin_time = time.time()
+
+            # parallel forward / backward
+            for data in data_list:
+                parallel.put(data)
+            for _ in range(len(ctx)):
+                (_, next_sentence_label, classified, masked_id,
+                    decoded, masked_weight, ls1, ls2, valid_length) = parallel.get()
+
+            mx.nd.waitall()
+
+            if batch_num > 20:
+                latency = (time.time()-batch_begin_time) * 1000
+                if data_list[0][0].shape[0] == max_bucket_batch_size and data_list[0][0].shape[1] == max_bucket_key:
+                    benchmark_latency_list.append(latency)
+                    benchmark_latency_array = np.array(benchmark_latency_list)
+                    min_latency = np.asscalar(np.min(benchmark_latency_array))
+                    max_latency = np.asscalar(np.max(benchmark_latency_array))
+                    logging.info("batch_num={}, batch_size={}, latency={}, avg={}, std={}, min={}, max={}, gap={}".format(batch_num, data_list[0][0].shape, latency, np.asscalar(np.mean(latency_array)), np.asscalar(np.std(latency_array)), min_latency, max_latency, max_latency-min_latency))
+            batch_num += 1
+    
+    return
+
     latency_list = []
 
     while step_num < num_train_steps:
@@ -236,12 +288,6 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 batch_num += 1
         # run single epoch
         break
-    if store.rank == 0:
-        save_states(step_num, trainer, args.ckpt_dir)
-        save_parameters(step_num, model, args.ckpt_dir)
-    mx.nd.waitall()
-    train_end_time = time.time()
-    logging.info('Train cost={:.1f}s'.format(train_end_time - train_begin_time))
 
 if __name__ == '__main__':
     ctx = [mx.cpu()] if args.gpus is None or args.gpus == '' else \
@@ -264,9 +310,9 @@ if __name__ == '__main__':
                                            num_parts=num_parts, part_idx=part_idx,
                                            prefetch=not args.dummy_data_len)
         train(data_train, model, nsp_loss, mlm_loss, len(vocab), ctx, store)
-    if args.data_eval:
-        logging.info('Using evaluation data at {}'.format(args.data_eval))
-        data_eval = get_pretrain_data_npz(args.data_eval, args.batch_size_eval, len(ctx),
-                                          False, False, 1)
-        evaluate(data_eval, model, nsp_loss, mlm_loss, len(vocab), ctx,
-                 args.log_interval, args.dtype)
+    # if args.data_eval:
+    #     logging.info('Using evaluation data at {}'.format(args.data_eval))
+    #     data_eval = get_pretrain_data_npz(args.data_eval, args.batch_size_eval, len(ctx),
+    #                                       False, False, 1)
+    #     evaluate(data_eval, model, nsp_loss, mlm_loss, len(vocab), ctx,
+    #              args.log_interval, args.dtype)
