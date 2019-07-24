@@ -220,6 +220,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 dataloader = get_dummy_dataloader(dataloader, target_shape)
 
             dataloader._batch_sampler._bucket_batch_sizes = bucket_batch_sizes
+            print(dataloader._batch_sampler._bucket_batch_sizes)
 
             for _, data_batch in enumerate(dataloader):
                 if args.use_avg_len:
