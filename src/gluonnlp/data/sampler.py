@@ -334,7 +334,8 @@ class FixedBucketSampler(Sampler):
         if bucket_keys is None:
             assert num_buckets > 0, 'num_buckets must be set when bucket_keys is None. Received ' \
                                     'num_buckets=%d' % num_buckets
-            bucket_keys = bucket_scheme(max_lengths, min_lengths, num_buckets)
+            # bucket_keys = bucket_scheme(max_lengths, min_lengths, num_buckets)
+            bucket_keys = bucket_scheme(int(math.ceil(max_lengths / 32.0)*32), 0, num_buckets)
         else:
             if num_buckets is not None:
                 warnings.warn('num_buckets will not be used if bucket_keys is not None. '
