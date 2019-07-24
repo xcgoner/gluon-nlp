@@ -33,6 +33,7 @@ This example shows how to pre-train a BERT model with Gluon NLP Toolkit.
 import os
 import logging
 import time
+import random
 
 import mxnet as mx
 import gluonnlp as nlp
@@ -159,11 +160,14 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
             if batch_num == 200:
                 break
 
-            for data in data_list:
-                num_samples = data[0].shape[0]
-                dummy_pad = mx.nd.zeros((num_samples, 1), ctx[0], dtype='int32')
-                data[0] = mx.nd.concat(data[0], dummy_pad, dim=1)
-                data[5] = mx.nd.concat(data[5], dummy_pad, dim=1)
+            if data_list[0][0].shape[1] != 512:
+                continue
+            if random.randint(0,1) == 0:
+                for data in data_list:
+                    num_samples = data[0].shape[0]
+                    dummy_pad = mx.nd.zeros((num_samples, 1), ctx[0], dtype='int32')
+                    data[0] = mx.nd.concat(data[0], dummy_pad, dim=1)
+                    data[5] = mx.nd.concat(data[5], dummy_pad, dim=1)
 
             mx.nd.waitall()
             batch_begin_time = time.time()
