@@ -233,8 +233,9 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                         continue
                     data_list = split_and_load(data_batch, ctx)
 
+                bucket_idx = np.argmax(bucket_keys_array >= data_list[0][0].shape[1])
                 if iter_num > bucket_drop_iterations and ((data_list[0][0].shape[0] == max_bucket_batch_size and data_list[0][0].shape[1] == max_bucket_key) \
-                    or data_list[0][0].shape[0] not in bucket_batch_sizes):
+                    or data_list[0][0].shape[0] != bucket_batch_sizes[bucket_idx]):
                     # ignore abnormal samples
                     continue
 
