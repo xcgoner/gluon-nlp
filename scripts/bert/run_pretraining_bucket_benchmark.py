@@ -158,7 +158,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                         continue
                     data_list = split_and_load(data_batch, ctx)
 
-                if batch_num == 0:
+                if batch_num == 0 and epoch == 0:
                     # initialize bucket info
                     bucket_batch_sizes = dataloader._batch_sampler._bucket_batch_sizes
                     bucket_keys = dataloader._batch_sampler._bucket_keys
