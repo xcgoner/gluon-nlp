@@ -395,6 +395,7 @@ class FixedBucketSampler(Sampler):
             self._sampler_size = len(self._batch_infos)
 
     def __iter__(self):
+        logging.info('Train Batch Sampler:\n%s', self.stats())
         if self._shuffle:
             np.random.shuffle(self._batch_infos)
             for bucket_id in range(len(self._bucket_keys)):
