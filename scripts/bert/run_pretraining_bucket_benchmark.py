@@ -157,9 +157,6 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                     continue
                 data_list = split_and_load(data_batch, ctx)
 
-            if batch_num == 200:
-                break
-
             if data_list[0][0].shape[1] != 512:
                 continue
             data = data_list[0]
