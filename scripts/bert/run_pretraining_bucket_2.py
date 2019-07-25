@@ -292,6 +292,8 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
             dataloader._batch_sampler._bucket_batch_sizes = bucket_batch_sizes
             print(bucket_batch_sizes_array.tolist())
 
+            bucket_batch_sizes_prev = [batch_size for batch_size in bucket_batch_sizes]
+
             for _, data_batch in enumerate(dataloader):
                 if args.use_avg_len:
                     data_list = [[seq.as_in_context(context) for seq in shard]
@@ -358,6 +360,15 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                     break
 
                 batch_num += 1
+
+            bucket_batch_sizes_unchanged = True
+            for batch_size, batch_size_prev in zip(bucket_batch_sizes, bucket_batch_sizes_prev):
+                if batch_size != batch_size_prev:
+                    bucket_batch_sizes_unchanged = False
+                    break
+            if bucket_batch_sizes_unchanged:
+                logging.info('bucket_batch_sizes is unchanged: {}'.format(bucket_batch_sizes))
+                return
 
             gap_array = evaluate(dataloader, 8, parallel, bucket_drop_iterations)
             logging.info('Evaluation: avg gap={}'.format(np.asscalar(np.mean(gap_array))))
