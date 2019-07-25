@@ -163,11 +163,15 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
             if data_list[0][0].shape[1] != 512:
                 continue
             if random.randint(0,1) == 0:
-                for data in data_list:
-                    num_samples = data[0].shape[0]
-                    dummy_pad = mx.nd.zeros((num_samples, 1), ctx[0], dtype='int32')
-                    data[0] = mx.nd.concat(data[0], dummy_pad, dim=1)
-                    data[5] = mx.nd.concat(data[5], dummy_pad, dim=1)
+                data = data_list[0]
+                num_samples = data[0].shape[0]
+                # dummy_pad = mx.nd.zeros((num_samples, 1), ctx[0], dtype='int32')
+                # data[0] = mx.nd.concat(data[0], dummy_pad, dim=1)
+                # data[5] = mx.nd.concat(data[5], dummy_pad, dim=1)
+                data[0] = mx.nd.zeros((num_samples, 511), ctx[0], dtype='int32')
+                data[5] = mx.nd.zeros((num_samples, 511), ctx[0], dtype='int32')
+                if data[1].shape[1] > 511:
+                    continue
 
             mx.nd.waitall()
             batch_begin_time = time.time()
