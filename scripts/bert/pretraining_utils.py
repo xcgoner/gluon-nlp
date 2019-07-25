@@ -229,7 +229,7 @@ class BERTLoaderTransform(object):
         # A batch includes: input_id, masked_id, masked_position, masked_weight,
         #                   next_sentence_label, segment_id, valid_length
         if self._round_len > 0:
-            batchify_fn = Tuple(RoundPad(self._round_len), Pad(), Pad(), Pad(), Stack(), RoundPad(self._round_len), Stack())
+            batchify_fn = Tuple(RoundPad(round_len=self._round_len), Pad(), Pad(), Pad(), Stack(), RoundPad(round_len=self._round_len), Stack())
         else:
             batchify_fn = Tuple(Pad(), Pad(), Pad(), Pad(), Stack(), Pad(), Stack())
         if self._use_avg_len:
