@@ -53,6 +53,7 @@ parser.add_argument('--bucket_batchsize', type=int, default=400, help='batch siz
 parser.add_argument('--bucket_lr', type=float, default=0.01, help='learning rate for bucket optimization')
 parser.add_argument('--bucket_lr_decay_epoch', type=str, default='40', help='decay epoch for bucket optimization')
 parser.add_argument('--bucket_lr_decay_rate', type=str, default='0.1', help='decay rate for bucket optimization')
+parser.add_argument('--bucket_round_len', type=int, default=16, help='round length of padding')
 args = parser.parse_args()
 
 os.environ['MXNET_KVSTORE_USETREE'] = '1'
@@ -262,6 +263,9 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                     max_latency = np.asscalar(np.max(benchmark_latency_array))
                     logging.info("batch_num={}, batch_size={}, latency={}, avg={}, std={}, min={}, max={}, gap={}".format(batch_num, data_list[0][0].shape, latency, np.asscalar(np.mean(benchmark_latency_array)), np.asscalar(np.std(benchmark_latency_array)), min_latency, max_latency, max_latency-min_latency))
             batch_num += 1
+
+        gap_array = evaluate(dataloader, 8, parallel, bucket_drop_iterations)
+        logging.info('Evaluation: avg gap={}'.format(np.asscalar(np.mean(gap_array))))
         break
     
     benchmark_latency = np.asscalar(np.mean(benchmark_latency_array))
@@ -378,7 +382,8 @@ if __name__ == '__main__':
         data_train = get_pretrain_data_npz(args.data, args.batch_size, len(ctx), True,
                                            args.use_avg_len, args.num_buckets,
                                            num_parts=num_parts, part_idx=part_idx,
-                                           prefetch=not args.dummy_data_len)
+                                           prefetch=not args.dummy_data_len, 
+                                           round_len = args.bucket_round_len)
         train(data_train, model, nsp_loss, mlm_loss, len(vocab), ctx, store)
     # if args.data_eval:
     #     logging.info('Using evaluation data at {}'.format(args.data_eval))

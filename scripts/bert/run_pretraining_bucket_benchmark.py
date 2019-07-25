@@ -168,7 +168,9 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
             data[0] = mx.nd.zeros((num_samples, data_len), ctx[0], dtype='int32')
             data[5] = mx.nd.zeros((num_samples, data_len), ctx[0], dtype='int32')
             if data[1].shape[1] > data_len:
-                continue
+                data[1] = data[1][:data_len]
+                data[2] = data[2][:data_len]
+                data[3] = data[3][:data_len]
 
             mx.nd.waitall()
             batch_begin_time = time.time()
