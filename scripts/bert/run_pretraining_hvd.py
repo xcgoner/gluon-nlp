@@ -84,6 +84,8 @@ parser.add_argument('--eval_use_npz', action='store_true',
                     help='Set to True if --data_eval provides npz files instead of raw text files')
 parser.add_argument('--optimizer', type=str, default='bertadam',
                     help='optimizer')
+parser.add_argument('--bucket_batch_sizes', type=str, default=None, help='the batch sizes of the buckets') 
+parser.add_argument('--bucket_round_len', type=int, default=16, help='round length of padding')           
 
 args = parser.parse_args()
 
@@ -110,6 +112,13 @@ if not args.use_avg_len and hvd.size() > 1:
                  'target number of tokens would help improve training throughput.')
 logging.info('Using effective batch size = batch_size * accumulate * np = %d',
              args.batch_size * args.accumulate * num_workers)
+
+# constant buckets
+if args.bucket_batch_sizes is not None:
+    bucket_batch_sizes = [int(i) for i in args.bucket_batch_sizes.split(',')]
+else:
+    bucket_batch_sizes = None
+assert len(bucket_batch_sizes) == args.num_buckets
 
 
 def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx):
@@ -172,6 +181,9 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx):
             if args.dummy_data_len:
                 target_shape = (args.batch_size, args.dummy_data_len)
                 dataloader = get_dummy_dataloader(dataloader, target_shape)
+            elif bucket_batch_sizes is not None:
+                # reset the _bucket_batch_sizes of FixedBucketSampler
+                dataloader._batch_sampler._bucket_batch_sizes = bucket_batch_sizes
 
             for _, data_batch in enumerate(dataloader):
                 if step_num >= num_train_steps:
@@ -316,10 +328,17 @@ if __name__ == '__main__':
 
         num_parts = 1 if args.dummy_data_len else num_workers
         part_idx = 0 if args.dummy_data_len else rank
-        data_train = get_dataset_fn(args.data, args.batch_size, 1, True,
+        if args.raw:
+            data_train = get_dataset_fn(args.data, args.batch_size, 1, True,
+                                        args.use_avg_len, args.num_buckets,
+                                        num_parts=num_parts, part_idx=part_idx,
+                                        prefetch=not args.dummy_data_len)
+        else:
+            data_train = get_dataset_fn(args.data, args.batch_size, 1, True,
                                     args.use_avg_len, args.num_buckets,
                                     num_parts=num_parts, part_idx=part_idx,
-                                    prefetch=not args.dummy_data_len)
+                                    prefetch=not args.dummy_data_len,
+                                    round_len = args.bucket_round_len)
         train(data_train, data_eval, model, nsp_loss, mlm_loss, len(vocab), ctx)
     if data_eval:
         # eval data is always based on a fixed npz file.
