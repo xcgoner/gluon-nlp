@@ -367,12 +367,11 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 if batch_size != batch_size_prev:
                     bucket_batch_sizes_unchanged = False
                     break
-            if bucket_batch_sizes_unchanged:
+            if bucket_batch_sizes_unchanged or epoch == args.bucket_epochs-1:
                 logging.info('bucket_batch_sizes is unchanged: {}'.format(bucket_batch_sizes))
+                gap_array = evaluate(dataloader, 8, parallel, bucket_drop_iterations)
+                logging.info('Evaluation: avg gap={}'.format(np.asscalar(np.mean(gap_array))))
                 return
-
-            gap_array = evaluate(dataloader, 8, parallel, bucket_drop_iterations)
-            logging.info('Evaluation: avg gap={}'.format(np.asscalar(np.mean(gap_array))))
             break
 
 if __name__ == '__main__':
