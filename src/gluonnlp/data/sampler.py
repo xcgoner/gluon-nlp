@@ -328,11 +328,11 @@ class FixedBucketSampler(Sampler):
             min_lengths = min_length
         else:
             min_lengths = self._lengths.min(axis=0)
-        if self._single_element:
-            assert min_lengths > 0, 'Sequence lengths must all be larger than 0.'
-        else:
-            for _, ele in enumerate(min_lengths):
-                assert ele > 0, 'Sequence lengths must all be larger than 0.'
+            if self._single_element:
+                assert min_lengths > 0, 'Sequence lengths must all be larger than 0.'
+            else:
+                for _, ele in enumerate(min_lengths):
+                    assert ele > 0, 'Sequence lengths must all be larger than 0.'
         # Generate the buckets
         if bucket_keys is None:
             assert num_buckets > 0, 'num_buckets must be set when bucket_keys is None. Received ' \
