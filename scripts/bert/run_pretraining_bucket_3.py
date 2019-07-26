@@ -49,11 +49,6 @@ import numpy as np
 # arg parser
 parser = get_argparser()
 parser.add_argument('--gpus', type=str, default='0', help='List of GPUs to use. e.g. 1,3')
-parser.add_argument('--bucket_epochs', type=int, default=1000, help='epochs for bucket optimization')
-parser.add_argument('--bucket_batchsize', type=int, default=400, help='batch size for bucket optimization')
-parser.add_argument('--bucket_lr', type=float, default=0.01, help='learning rate for bucket optimization')
-parser.add_argument('--bucket_lr_decay_epoch', type=str, default='40', help='decay epoch for bucket optimization')
-parser.add_argument('--bucket_lr_decay_rate', type=str, default='0.1', help='decay rate for bucket optimization')
 parser.add_argument('--bucket_round_len', type=int, default=16, help='round length of padding')
 parser.add_argument('--bucket_min_len', type=int, default=-1, help='min length of sequences, for bucketing')  
 args = parser.parse_args()
