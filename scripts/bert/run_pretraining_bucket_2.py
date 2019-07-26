@@ -374,6 +374,9 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 gap_array = evaluate(dataloader, 8, parallel, bucket_drop_iterations)
                 logging.info('Evaluation: avg gap={}'.format(np.asscalar(np.mean(gap_array))))
                 return
+            else:
+                gap_array = evaluate(dataloader, 8, parallel, bucket_drop_iterations)
+                logging.info('Epoch={}, valuation: avg gap={}'.format(epoch, np.asscalar(np.mean(gap_array))))
             break
 
 if __name__ == '__main__':
