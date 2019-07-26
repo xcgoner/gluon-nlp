@@ -291,7 +291,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 dataloader = get_dummy_dataloader(dataloader, target_shape)
 
             dataloader._batch_sampler._bucket_batch_sizes = bucket_batch_sizes
-            print(bucket_batch_sizes_array.tolist())
+            logging.info('Epoch={}, bucket_batch_sizes={}'.format(epoch, bucket_batch_sizes))
 
             bucket_batch_sizes_prev = [batch_size for batch_size in bucket_batch_sizes]
 
@@ -342,7 +342,9 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 latency_array = np.array(latency_list)
                 min_latency = np.asscalar(np.min(latency_array))
                 max_latency = np.asscalar(np.max(latency_array))
-                logging.info("batch_num={}, batch_size={}, latency={}, avg={}, std={}, min={}, max={}, gap={}".format(batch_num, data_list[0][0].shape, latency, np.asscalar(np.mean(latency_array)), np.asscalar(np.std(latency_array)), min_latency, max_latency, max_latency-min_latency))
+                logging.info("Epoch={}, batch_num={}, batch_size={}, latency={}, avg={}, std={}, min={}, max={}, gap={}" \
+                            .format(epoch, batch_num, data_list[0][0].shape, latency, np.asscalar(np.mean(latency_array)), \
+                                    np.asscalar(np.std(latency_array)), min_latency, max_latency, max_latency-min_latency))
 
                 if batch_num == args.bucket_batchsize - 1:
                     # gradient descent
