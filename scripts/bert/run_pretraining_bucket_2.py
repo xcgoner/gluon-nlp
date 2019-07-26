@@ -54,6 +54,7 @@ parser.add_argument('--bucket_lr', type=float, default=0.01, help='learning rate
 parser.add_argument('--bucket_lr_decay_epoch', type=str, default='40', help='decay epoch for bucket optimization')
 parser.add_argument('--bucket_lr_decay_rate', type=str, default='0.1', help='decay rate for bucket optimization')
 parser.add_argument('--bucket_round_len', type=int, default=16, help='round length of padding')
+parser.add_argument('--bucket_min_len', type=int, default=-1, help='min length of sequences, for bucketing')  
 args = parser.parse_args()
 
 os.environ['MXNET_KVSTORE_USETREE'] = '1'
@@ -394,7 +395,8 @@ if __name__ == '__main__':
                                            args.use_avg_len, args.num_buckets,
                                            num_parts=num_parts, part_idx=part_idx,
                                            prefetch=not args.dummy_data_len, 
-                                           round_len = args.bucket_round_len)
+                                           round_len = args.bucket_round_len, 
+                                           min_length=args.bucket_min_len)
         train(data_train, model, nsp_loss, mlm_loss, len(vocab), ctx, store)
     # if args.data_eval:
     #     logging.info('Using evaluation data at {}'.format(args.data_eval))
