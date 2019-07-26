@@ -340,7 +340,7 @@ if __name__ == '__main__':
                                     num_parts=num_parts, part_idx=part_idx,
                                     prefetch=not args.dummy_data_len,
                                     round_len=args.bucket_round_len, 
-                                    min_length=bucket_min_len)
+                                    min_length=args.bucket_min_len)
         train(data_train, data_eval, model, nsp_loss, mlm_loss, len(vocab), ctx)
     if data_eval:
         # eval data is always based on a fixed npz file.
