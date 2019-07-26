@@ -260,13 +260,13 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
 
         # original bucket
         print(bucket_batch_sizes)
-        gap_array = evaluate(dataloader, 8, parallel, bucket_drop_iterations)
-        logging.info('Evaluation: avg gap={}'.format(np.asscalar(np.mean(gap_array))))
+        # gap_array = evaluate(dataloader, 8, parallel, bucket_drop_iterations)
+        # logging.info('Evaluation: avg gap={}'.format(np.asscalar(np.mean(gap_array))))
         # optimal bucket
         optimal_latency = np.asscalar(np.mean(np.array(benchmark_latency_list[-1], dtype='float32')))
         for bucket_idx in range(len(bucket_batch_sizes)-1):
             current_bucket_latency = np.asscalar(np.mean(np.array(benchmark_latency_list[bucket_idx], dtype='float32')))
-            bucket_batch_sizes[bucket_idx] = int(math.round(optimal_latency / current_bucket_latency))
+            bucket_batch_sizes[bucket_idx] = int(round(optimal_latency / current_bucket_latency * bucket_batch_sizes[bucket_idx]))
         dataloader._batch_sampler._bucket_batch_sizes = bucket_batch_sizes
         print(bucket_batch_sizes)
         gap_array = evaluate(dataloader, 8, parallel, bucket_drop_iterations)
