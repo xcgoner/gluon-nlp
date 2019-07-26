@@ -85,7 +85,8 @@ parser.add_argument('--eval_use_npz', action='store_true',
 parser.add_argument('--optimizer', type=str, default='bertadam',
                     help='optimizer')
 parser.add_argument('--bucket_batch_sizes', type=str, default=None, help='the batch sizes of the buckets') 
-parser.add_argument('--bucket_round_len', type=int, default=16, help='round length of padding')           
+parser.add_argument('--bucket_round_len', type=int, default=16, help='round length of padding') 
+parser.add_argument('--bucket_min_len', type=int, default=-1, help='min length of sequences, for bucketing')            
 
 args = parser.parse_args()
 
@@ -338,7 +339,8 @@ if __name__ == '__main__':
                                     args.use_avg_len, args.num_buckets,
                                     num_parts=num_parts, part_idx=part_idx,
                                     prefetch=not args.dummy_data_len,
-                                    round_len = args.bucket_round_len)
+                                    round_len=args.bucket_round_len, 
+                                    min_length=bucket_min_len)
         train(data_train, data_eval, model, nsp_loss, mlm_loss, len(vocab), ctx)
     if data_eval:
         # eval data is always based on a fixed npz file.

@@ -206,13 +206,14 @@ def get_pretrain_data_text(data, batch_size, num_ctxes, shuffle, use_avg_len,
 class BERTLoaderTransform(object):
     """Create dataloader for a BERT dataset. """
 
-    def __init__(self, use_avg_len, batch_size, shuffle, num_ctxes, num_buckets, round_len):
+    def __init__(self, use_avg_len, batch_size, shuffle, num_ctxes, num_buckets, round_len, min_length):
         self._use_avg_len = use_avg_len
         self._batch_size = batch_size
         self._shuffle = shuffle
         self._num_ctxes = num_ctxes
         self._num_buckets = num_buckets
         self._round_len = round_len
+        self._min_length = min_length
 
     def __call__(self, dataset):
         """create data loader based on the dataset chunk"""
@@ -240,7 +241,8 @@ class BERTLoaderTransform(object):
                                                   num_buckets=self._num_buckets,
                                                   shuffle=self._shuffle,
                                                   use_average_length=True,
-                                                  num_shards=self._num_ctxes)
+                                                  num_shards=self._num_ctxes, 
+                                                  min_length=self._min_length)
             dataloader = nlp.data.ShardedDataLoader(dataset,
                                                     batch_sampler=sampler,
                                                     batchify_fn=batchify_fn,
@@ -259,7 +261,7 @@ class BERTLoaderTransform(object):
         return dataloader
 
 def get_pretrain_data_npz(data, batch_size, num_ctxes, shuffle, use_avg_len,
-                          num_buckets, num_parts=1, part_idx=0, prefetch=True, round_len=0):
+                          num_buckets, num_parts=1, part_idx=0, prefetch=True, round_len=0, min_length=-1):
     """create dataset for pretraining based on pre-processed npz files."""
     # handle commas in the provided path
     num_files = sum([len(glob.glob(os.path.expanduser(d.strip()))) for d in data.split(',')])
@@ -274,7 +276,7 @@ def get_pretrain_data_npz(data, batch_size, num_ctxes, shuffle, use_avg_len,
 
     # create data loader based on the dataset
     dataloader_xform = BERTLoaderTransform(use_avg_len, batch_size,
-                                           shuffle, num_ctxes, num_buckets, round_len)
+                                           shuffle, num_ctxes, num_buckets, round_len, min_length)
     stream = stream.transform(dataloader_xform)
     return stream
 
