@@ -117,9 +117,9 @@ logging.info('Using effective batch size = batch_size * accumulate * np = %d',
 # constant buckets
 if args.bucket_batch_sizes is not None:
     bucket_batch_sizes = [int(i) for i in args.bucket_batch_sizes.split(',')]
+    assert len(bucket_batch_sizes) == args.num_buckets
 else:
     bucket_batch_sizes = None
-assert len(bucket_batch_sizes) == args.num_buckets
 
 
 def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx):
