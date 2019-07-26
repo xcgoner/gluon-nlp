@@ -326,7 +326,7 @@ class FixedBucketSampler(Sampler):
         max_lengths = self._lengths.max(axis=0)
         if min_length >= 0:
             min_lengths = min_length
-        else
+        else:
             min_lengths = self._lengths.min(axis=0)
         if self._single_element:
             assert min_lengths > 0, 'Sequence lengths must all be larger than 0.'
