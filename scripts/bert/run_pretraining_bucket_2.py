@@ -61,9 +61,9 @@ os.environ['MXNET_KVSTORE_USETREE'] = '1'
 os.environ['MXNET_GPU_MEM_POOL_TYPE'] = 'Round'
 
 # logging
-level = logging.DEBUG if args.verbose else logging.INFO
+level = logging.DEBUG if args.verbose else print
 logging.getLogger().setLevel(level)
-logging.info(args)
+print(args)
 
 class ParallelBERT(nlp.utils.Parallelizable):
     """Data parallel BERT model.
@@ -156,7 +156,7 @@ def evaluate(dataloader, num_gpus, parallel, bucket_drop_iterations):
             gap_list.append(gap)
             gap_array = np.array(gap_list)
             latency_list = []
-            # logging.info("iter_num={}, gap={}, avg={}, std={}, min={}, max={}".format(iter_num, gap, np.asscalar(np.mean(gap_array)), np.asscalar(np.std(gap_array)), np.asscalar(np.min(gap_array)), np.asscalar(np.max(gap_array))))
+            # print("iter_num={}, gap={}, avg={}, std={}, min={}, max={}".format(iter_num, gap, np.asscalar(np.mean(gap_array)), np.asscalar(np.std(gap_array)), np.asscalar(np.min(gap_array)), np.asscalar(np.max(gap_array))))
         batch_num += 1
     return gap_array
 
@@ -179,7 +179,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
 
     if args.start_step:
         state_path = os.path.join(args.ckpt_dir, '%07d.states.%02d'%(args.start_step, 0))
-        logging.info('Loading trainer state from %s', state_path)
+        print('Loading trainer state from %s', state_path)
         nlp.utils.load_states(trainer, state_path)
 
     accumulate = args.accumulate
@@ -262,11 +262,11 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                     benchmark_latency_array = np.array(benchmark_latency_list)
                     min_latency = np.asscalar(np.min(benchmark_latency_array))
                     max_latency = np.asscalar(np.max(benchmark_latency_array))
-                    logging.info("batch_num={}, batch_size={}, latency={}, avg={}, std={}, min={}, max={}, gap={}".format(batch_num, data_list[0][0].shape, latency, np.asscalar(np.mean(benchmark_latency_array)), np.asscalar(np.std(benchmark_latency_array)), min_latency, max_latency, max_latency-min_latency))
+                    print("batch_num={}, batch_size={}, latency={}, avg={}, std={}, min={}, max={}, gap={}".format(batch_num, data_list[0][0].shape, latency, np.asscalar(np.mean(benchmark_latency_array)), np.asscalar(np.std(benchmark_latency_array)), min_latency, max_latency, max_latency-min_latency))
             batch_num += 1
 
         gap_array = evaluate(dataloader, 8, parallel, bucket_drop_iterations)
-        logging.info('Evaluation: avg gap={}'.format(np.asscalar(np.mean(gap_array))))
+        print('Evaluation: avg gap={}'.format(np.asscalar(np.mean(gap_array))))
         break
     
     benchmark_latency = np.asscalar(np.mean(benchmark_latency_array))
@@ -291,7 +291,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 dataloader = get_dummy_dataloader(dataloader, target_shape)
 
             dataloader._batch_sampler._bucket_batch_sizes = bucket_batch_sizes
-            logging.info('Epoch={}, bucket_batch_sizes={}'.format(epoch, bucket_batch_sizes))
+            print('Epoch={}, bucket_batch_sizes={}'.format(epoch, bucket_batch_sizes))
 
             bucket_batch_sizes_prev = [batch_size for batch_size in bucket_batch_sizes]
 
@@ -342,7 +342,7 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 latency_array = np.array(latency_list)
                 min_latency = np.asscalar(np.min(latency_array))
                 max_latency = np.asscalar(np.max(latency_array))
-                logging.info("Epoch={}, batch_num={}, batch_size={}, latency={}, avg={}, std={}, min={}, max={}, gap={}" \
+                print("Epoch={}, batch_num={}, batch_size={}, latency={}, avg={}, std={}, min={}, max={}, gap={}" \
                             .format(epoch, batch_num, data_list[0][0].shape, latency, np.asscalar(np.mean(latency_array)), \
                                     np.asscalar(np.std(latency_array)), min_latency, max_latency, max_latency-min_latency))
 
@@ -370,13 +370,13 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                     bucket_batch_sizes_unchanged = False
                     break
             if bucket_batch_sizes_unchanged or epoch == args.bucket_epochs-1:
-                logging.info('bucket_batch_sizes is unchanged: {}'.format(bucket_batch_sizes))
+                print('bucket_batch_sizes is unchanged: {}'.format(bucket_batch_sizes))
                 gap_array = evaluate(dataloader, 8, parallel, bucket_drop_iterations)
-                logging.info('Evaluation: avg gap={}'.format(np.asscalar(np.mean(gap_array))))
+                print('Evaluation: avg gap={}'.format(np.asscalar(np.mean(gap_array))))
                 return
             else:
                 gap_array = evaluate(dataloader, 8, parallel, bucket_drop_iterations)
-                logging.info('Epoch={}, valuation: avg gap={}'.format(epoch, np.asscalar(np.mean(gap_array))))
+                print('Epoch={}, valuation: avg gap={}'.format(epoch, np.asscalar(np.mean(gap_array))))
             break
 
 if __name__ == '__main__':
@@ -392,7 +392,7 @@ if __name__ == '__main__':
     nlp.utils.mkdir(args.ckpt_dir)
 
     if args.data:
-        logging.info('Using training data at {}'.format(args.data))
+        print('Using training data at {}'.format(args.data))
         num_parts = 1 if args.dummy_data_len else store.num_workers
         part_idx = 0 if args.dummy_data_len else store.rank
         data_train = get_pretrain_data_npz(args.data, args.batch_size, len(ctx), True,
@@ -403,7 +403,7 @@ if __name__ == '__main__':
                                            min_length=args.bucket_min_len)
         train(data_train, model, nsp_loss, mlm_loss, len(vocab), ctx, store)
     # if args.data_eval:
-    #     logging.info('Using evaluation data at {}'.format(args.data_eval))
+    #     print('Using evaluation data at {}'.format(args.data_eval))
     #     data_eval = get_pretrain_data_npz(args.data_eval, args.batch_size_eval, len(ctx),
     #                                       False, False, 1)
     #     evaluate(data_eval, model, nsp_loss, mlm_loss, len(vocab), ctx,
