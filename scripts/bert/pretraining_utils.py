@@ -229,10 +229,7 @@ class BERTLoaderTransform(object):
 
         # A batch includes: input_id, masked_id, masked_position, masked_weight,
         #                   next_sentence_label, segment_id, valid_length
-        if self._round_len > 0:
-            batchify_fn = Tuple(RoundPad(round_len=self._round_len), Pad(), Pad(), Pad(), Stack(), RoundPad(round_len=self._round_len), Stack())
-        else:
-            batchify_fn = Tuple(Pad(), Pad(), Pad(), Pad(), Stack(), Pad(), Stack())
+        batchify_fn = Tuple(Pad(round_len=self._round_len), Pad(), Pad(), Pad(), Stack(), Pad(round_len=self._round_len), Stack())
         if self._use_avg_len:
             # sharded data loader
             sampler = nlp.data.FixedBucketSampler(lengths=lengths,
@@ -261,7 +258,7 @@ class BERTLoaderTransform(object):
         return dataloader
 
 def get_pretrain_data_npz(data, batch_size, num_ctxes, shuffle, use_avg_len,
-                          num_buckets, num_parts=1, part_idx=0, prefetch=True, round_len=0, min_length=-1):
+                          num_buckets, num_parts=1, part_idx=0, prefetch=True, round_len=None, min_length=None):
     """create dataset for pretraining based on pre-processed npz files."""
     # handle commas in the provided path
     num_files = sum([len(glob.glob(os.path.expanduser(d.strip()))) for d in data.split(',')])
@@ -491,124 +488,3 @@ def generate_dev_set(tokenizer, vocab, cache_file, args):
                                1, args.num_data_workers,
                                worker_pool, cache_file))
     logging.info('Done generating validation set on rank 0.')
-
-
-def _pad_arrs_to_round_length(arrs, pad_axis, pad_val, use_shared_mem, dtype, round_len):
-    """Inner Implementation of the GPU-friendly Pad batchify
-
-    Parameters
-    ----------
-    arrs : list
-    pad_axis : int
-    pad_val : number
-    use_shared_mem : bool, default False
-    round_len : pad to the factor of round_len, e.g., if round_len == 8, we will only pad to 8, 16, 24, 32,...
-
-    Returns
-    -------
-    ret : NDArray
-    original_length : NDArray
-    """
-    if isinstance(arrs[0], mx.nd.NDArray):
-        dtype = arrs[0].dtype if dtype is None else dtype
-        arrs = [arr.asnumpy() for arr in arrs]
-    elif not isinstance(arrs[0], np.ndarray):
-        arrs = [np.asarray(ele) for ele in arrs]
-    else:
-        dtype = arrs[0].dtype if dtype is None else dtype
-
-    original_length = [ele.shape[pad_axis] for ele in arrs]
-    max_size = int(math.ceil(max(original_length) * 1.0 / round_len) * round_len)
-
-    ret_shape = list(arrs[0].shape)
-    ret_shape[pad_axis] = max_size
-    ret_shape = (len(arrs), ) + tuple(ret_shape)
-
-    ret = np.full(shape=ret_shape, fill_value=pad_val, dtype=dtype)
-
-    for i, arr in enumerate(arrs):
-        if arr.shape[pad_axis] == max_size:
-            ret[i] = arr
-        else:
-            slices = [slice(None) for _ in range(arr.ndim)]
-            slices[pad_axis] = slice(0, arr.shape[pad_axis])
-            if slices[pad_axis].start != slices[pad_axis].stop:
-                slices = [slice(i, i + 1)] + slices
-                ret[tuple(slices)] = arr
-
-    ctx = mx.Context('cpu_shared', 0) if use_shared_mem else mx.cpu()
-    ret = mx.nd.array(ret, ctx=ctx, dtype=dtype)
-    original_length = mx.nd.array(original_length, ctx=ctx, dtype=np.int32)
-
-    return ret, original_length
-
-class RoundPad(Pad):
-    """Return a callable that pads and stacks data.
-
-    Parameters
-    ----------
-    axis : int, default 0
-        The axis to pad the arrays. The arrays will be padded to the largest dimension at
-        `axis`. For example, assume the input arrays have shape
-        (10, 8, 5), (6, 8, 5), (3, 8, 5) and the `axis` is 0. Each input will be padded into
-        (10, 8, 5) and then stacked to form the final output, which has shape（3, 10, 8, 5).
-    pad_val : float or int, default 0
-        The padding value.
-    ret_length : bool, default False
-        Whether to return the valid length in the output.
-    dtype : str or numpy.dtype, default None
-        The value type of the output. If it is set to None, the input data type is used.
-    round_len : pad to the factor of round_len, e.g., if round_len == 8, we will only pad to 8, 16, 24, 32,...
-    """
-    def __init__(self, axis=0, pad_val=0, ret_length=False, dtype=None, round_len=16):
-        # in the common cases, set round_len=8 or 16
-
-        super(RoundPad, self).__init__(
-            axis=axis, pad_val=pad_val, ret_length=ret_length, dtype=dtype)
-
-        self._round_len = round_len
-
-    def __call__(self, data):
-        """Batchify the input data.
-
-        The input can be list of numpy.ndarray, list of numbers or list of
-        mxnet.nd.NDArray. Inputting mxnet.nd.NDArray is discouraged as each
-        array need to be converted to numpy for efficient padding.
-
-        The arrays will be padded to the largest dimension at `axis` and then
-        stacked to form the final output. In addition, the function will output
-        the original dimensions at the `axis` if ret_length is turned on.
-
-        Parameters
-        ----------
-        data : List[np.ndarray] or List[List[dtype]] or List[mx.nd.NDArray]
-            List of samples to pad and stack.
-
-        Returns
-        -------
-        batch_data: NDArray
-            Data in the minibatch. Shape is (N, ...)
-        valid_length: NDArray, optional
-            The sequences' original lengths at the padded axis. Shape is (N,). This will only be
-            returned in `ret_length` is True.
-
-        """
-
-        if isinstance(data[0], mx.nd.NDArray) and not self._warned:
-            self._warned = True
-            warnings.warn(
-                'Using Pad with NDArrays is discouraged for speed reasons. '
-                'Instead you should pad your data while it is still a list '
-                'and before converting to an NDArray. '
-                'Alternatively you can consider inputting a numpy.ndarray.')
-        if isinstance(data[0], (mx.nd.NDArray, np.ndarray, list)):
-            padded_arr, original_length = _pad_arrs_to_round_length(data, self._axis,
-                                                                  self._pad_val, True,
-                                                                  self._dtype, 
-                                                                  self._round_len)
-            if self._ret_length:
-                return padded_arr, original_length
-            else:
-                return padded_arr
-        else:
-            raise NotImplementedError

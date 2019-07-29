@@ -369,15 +369,15 @@ def train(data_train, model, nsp_loss, mlm_loss, vocab_size, ctx, store):
                 if batch_size != batch_size_prev:
                     bucket_batch_sizes_unchanged = False
                     break
-            if bucket_batch_sizes_unchanged or epoch == args.bucket_epochs-1:
-                print('bucket_batch_sizes is unchanged: {}'.format(bucket_batch_sizes))
-                gap_array = evaluate(dataloader, 8, parallel, bucket_drop_iterations)
-                print('Evaluation: avg gap={}'.format(np.asscalar(np.mean(gap_array))))
-                return
-            else:
-                gap_array = evaluate(dataloader, 8, parallel, bucket_drop_iterations)
-                print('Epoch={}, valuation: avg gap={}'.format(epoch, np.asscalar(np.mean(gap_array))))
-            break
+            if args.data_eval:
+                if bucket_batch_sizes_unchanged or epoch == args.bucket_epochs-1:
+                    print('bucket_batch_sizes is unchanged: {}'.format(bucket_batch_sizes))
+                    gap_array = evaluate(dataloader, 8, parallel, bucket_drop_iterations)
+                    print('Evaluation: avg gap={}'.format(np.asscalar(np.mean(gap_array))))
+                    return
+                else:
+                    gap_array = evaluate(dataloader, 8, parallel, bucket_drop_iterations)
+                    print('Epoch={}, valuation: avg gap={}'.format(epoch, np.asscalar(np.mean(gap_array))))
 
 if __name__ == '__main__':
     ctx = [mx.cpu()] if args.gpus is None or args.gpus == '' else \
@@ -391,6 +391,14 @@ if __name__ == '__main__':
     store = mx.kv.create('device')
     nlp.utils.mkdir(args.ckpt_dir)
 
+    if args.data_eval:
+        data_eval = get_pretrain_data_npz(args.data_eval, args.batch_size, len(ctx), True,
+                                           args.use_avg_len, args.num_buckets,
+                                           num_parts=num_parts, part_idx=part_idx,
+                                           prefetch=not args.dummy_data_len, 
+                                           round_len = args.bucket_round_len, 
+                                           min_length=args.bucket_min_len)
+
     if args.data:
         print('Using training data at {}'.format(args.data))
         num_parts = 1 if args.dummy_data_len else store.num_workers
@@ -402,9 +410,3 @@ if __name__ == '__main__':
                                            round_len = args.bucket_round_len, 
                                            min_length=args.bucket_min_len)
         train(data_train, model, nsp_loss, mlm_loss, len(vocab), ctx, store)
-    # if args.data_eval:
-    #     print('Using evaluation data at {}'.format(args.data_eval))
-    #     data_eval = get_pretrain_data_npz(args.data_eval, args.batch_size_eval, len(ctx),
-    #                                       False, False, 1)
-    #     evaluate(data_eval, model, nsp_loss, mlm_loss, len(vocab), ctx,
-    #              args.log_interval, args.dtype)

@@ -304,7 +304,7 @@ class FixedBucketSampler(Sampler):
     """
     def __init__(self, lengths, batch_size, num_buckets=10, bucket_keys=None,
                  ratio=0, shuffle=False, use_average_length=False, num_shards=0,
-                 bucket_scheme=ConstWidthBucket(), batch_sizes=None, min_length=-1):
+                 bucket_scheme=ConstWidthBucket(), min_length=None):
         assert len(lengths) > 0, 'FixedBucketSampler does not support empty lengths.'
         assert batch_size > 0, 'Batch size must be larger than 0.'
         assert ratio >= 0, 'batch size scaling ratio cannot be negative.'
@@ -324,7 +324,7 @@ class FixedBucketSampler(Sampler):
         self._num_shards = num_shards
         self._bucket_scheme = bucket_scheme
         max_lengths = self._lengths.max(axis=0)
-        if min_length >= 0:
+        if min_length is not None:
             min_lengths = min_length
         else:
             min_lengths = self._lengths.min(axis=0)
@@ -363,9 +363,9 @@ class FixedBucketSampler(Sampler):
 
         self._bucket_sample_ids = [sample_ids for sample_ids in bucket_sample_ids
                                    if len(sample_ids) > 0]
-        if batch_sizes is not None:
-            self._bucket_batch_sizes = batch_sizes
-            assert len(batch_sizes) == len(self._bucket_keys)
+        if isinstance(batch_size, list):
+            self._bucket_batch_sizes = batch_size
+            assert len(batch_size) == len(self._bucket_keys)
         else:
             if not use_average_length:
                 scale_up_keys = [key if self._single_element else sum(key) for key
