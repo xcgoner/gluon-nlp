@@ -21,6 +21,7 @@ into batches for fast processing."""
 __all__ = ['Stack', 'Pad', 'Tuple']
 
 import warnings
+import math
 
 import numpy as np
 import mxnet as mx
