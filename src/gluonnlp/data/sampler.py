@@ -306,7 +306,7 @@ class FixedBucketSampler(Sampler):
                  ratio=0, shuffle=False, use_average_length=False, num_shards=0,
                  bucket_scheme=ConstWidthBucket(), min_length=None):
         assert len(lengths) > 0, 'FixedBucketSampler does not support empty lengths.'
-        assert batch_size > 0, 'Batch size must be larger than 0.'
+        assert isinstance(batch_size, list) or batch_size > 0, 'Batch size must be larger than 0.'
         assert ratio >= 0, 'batch size scaling ratio cannot be negative.'
         self._batch_size = batch_size
         self._ratio = ratio
