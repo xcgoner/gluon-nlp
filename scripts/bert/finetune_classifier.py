@@ -243,6 +243,8 @@ bert, vocabulary = get_model(
     use_decoder=False,
     use_classifier=False)
 
+bert.cast(args.dtype)
+
 if not task.class_labels:
     # STS-B is a regression task.
     # STSBTask().class_labels returns None

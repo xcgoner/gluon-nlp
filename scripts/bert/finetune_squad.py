@@ -299,8 +299,11 @@ if model_parameters:
     net.load_parameters(model_parameters, ctx=ctx, cast_dtype=True)
 elif pretrained_bert_parameters:
     # only load BertModel parameters
-    bert.load_parameters(pretrained_bert_parameters, ctx=ctx,
-                         ignore_extra=True, cast_dtype=True)
+    # bert.load_parameters(pretrained_bert_parameters, ctx=ctx,
+    #                      ignore_extra=True, cast_dtype=True)
+    logging.info('loading bert params from %s', pretrained_bert_parameters)
+    nlp.utils.load_parameters(bert, pretrained_bert_parameters, ctx=ctx,
+                              ignore_extra=True, cast_dtype=True)
     net.span_classifier.initialize(init=mx.init.Normal(0.02), ctx=ctx)
 elif pretrained:
     # only load BertModel parameters
