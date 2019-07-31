@@ -477,6 +477,7 @@ def train(metric):
                 # forward and backward
                 with mx.autograd.record():
                     input_ids, valid_length, type_ids, label = seqs
+                    print(input_ids.dtype, valid_length.dtype, type_ids.dtype, label.dtype)
                     out = model(
                         input_ids.as_in_context(ctx), type_ids.as_in_context(ctx),
                         valid_length.astype('float32').as_in_context(ctx))
