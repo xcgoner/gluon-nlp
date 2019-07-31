@@ -243,8 +243,6 @@ bert, vocabulary = get_model(
     use_decoder=False,
     use_classifier=False)
 
-bert.cast(args.dtype)
-
 if not task.class_labels:
     # STS-B is a regression task.
     # STSBTask().class_labels returns None
@@ -258,6 +256,8 @@ else:
     if not model_parameters:
         model.classifier.initialize(init=mx.init.Normal(0.02), ctx=ctx)
     loss_function = gluon.loss.SoftmaxCELoss()
+
+model.cast(args.dtype)
 
 # load checkpointing
 output_dir = args.output_dir
