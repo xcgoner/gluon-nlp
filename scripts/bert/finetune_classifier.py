@@ -257,14 +257,12 @@ else:
         model.classifier.initialize(init=mx.init.Normal(0.02), ctx=ctx)
     loss_function = gluon.loss.SoftmaxCELoss()
 
-model.cast(args.dtype)
-
 # load checkpointing
 output_dir = args.output_dir
 if pretrained_bert_parameters:
     logging.info('loading bert params from %s', pretrained_bert_parameters)
     nlp.utils.load_parameters(model.bert, pretrained_bert_parameters, ctx=ctx,
-                              ignore_extra=True, cast_dtype=True)
+                              ignore_extra=True, cast_dtype=False)
 if model_parameters:
     logging.info('loading model params from %s', model_parameters)
     nlp.utils.load_parameters(model, model_parameters, ctx=ctx, cast_dtype=True)
