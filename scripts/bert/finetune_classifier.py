@@ -262,11 +262,13 @@ output_dir = args.output_dir
 if pretrained_bert_parameters:
     logging.info('loading bert params from %s', pretrained_bert_parameters)
     nlp.utils.load_parameters(model.bert, pretrained_bert_parameters, ctx=ctx,
-                              ignore_extra=True, cast_dtype=False)
+                              ignore_extra=True, cast_dtype=True)
 if model_parameters:
     logging.info('loading model params from %s', model_parameters)
     nlp.utils.load_parameters(model, model_parameters, ctx=ctx, cast_dtype=True)
 nlp.utils.mkdir(output_dir)
+
+model.cast(args.dtype)
 
 logging.debug(model)
 model.hybridize(static_alloc=True)
