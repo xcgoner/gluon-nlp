@@ -270,6 +270,7 @@ nlp.utils.mkdir(output_dir)
 
 model.cast(args.dtype)
 model.bert.cast(args.dtype)
+model.classifier.cast(args.dtype)
 
 logging.debug(model)
 model.hybridize(static_alloc=True)
