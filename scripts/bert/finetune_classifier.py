@@ -268,11 +268,11 @@ if model_parameters:
     nlp.utils.load_parameters(model, model_parameters, ctx=ctx, cast_dtype=True)
 nlp.utils.mkdir(output_dir)
 
-model.cast(args.dtype)
+# model.cast(args.dtype)
 
 logging.debug(model)
-model.hybridize(static_alloc=True)
-loss_function.hybridize(static_alloc=True)
+# model.hybridize(static_alloc=True)
+# loss_function.hybridize(static_alloc=True)
 
 # data processing
 do_lower_case = 'uncased' in dataset
