@@ -481,6 +481,7 @@ def train(metric):
                     out = model(
                         input_ids.as_in_context(ctx), type_ids.as_in_context(ctx),
                         valid_length.astype('float32').as_in_context(ctx))
+                    print(out.dtype)
                     ls = loss_function(out, label.as_in_context(ctx)).mean()
                     if args.dtype == 'float16':
                         with amp.scale_loss(ls, trainer) as scaled_loss:
