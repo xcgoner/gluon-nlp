@@ -119,4 +119,5 @@ class FP16DistributedLocalSGDTrainerV2(hvd.DistributedTrainer):
         #             allreduce_(self._updaters[0].states[i][0][j], average=True,
         #                         name=str(idx), priority=-i-len(self._params)*2, 
         #                         local_reduction = False)
+        pass
 
