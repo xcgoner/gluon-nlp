@@ -101,7 +101,7 @@ class FP16DistributedLocalSGDTrainerV2(hvd.DistributedTrainer):
 
     def _allreduce_states(self):
         # print("_allreduce_states")
-        for i, param in enumerate(sorted(self._params, key=lambda p: p.name)):
+        # for i, param in enumerate(sorted(self._params, key=lambda p: p.name)):
         # important: only works for bert_adam with fp16 trainer
         # sync params
         for i, param in enumerate(self._params):
