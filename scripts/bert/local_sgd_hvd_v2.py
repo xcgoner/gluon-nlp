@@ -105,7 +105,8 @@ class FP16DistributedLocalSGDTrainerV2(hvd.DistributedTrainer):
         # important: only works for bert_adam with fp16 trainer
         # sync params
         # for i, param in enumerate(self._params):
-        for i, param in sorted(list(enumerate(self._params)), key=lambda p: p[1].name):
+        # for i, param in sorted(list(enumerate(self._params)), key=lambda p: p[1].name):
+        for i, param in enumerate(self._params):
             if param.grad_req != 'null':
                 allreduce_(self._updaters[0].states[i][1], average=True,
                                 name=str(i), priority=-i, 
