@@ -105,21 +105,29 @@ class FP16DistributedLocalSGDTrainerV2(hvd.DistributedTrainer):
         # important: only works for bert_adam with fp16 trainer
         # sync params
         # for i, param in enumerate(self._params):
-        for i, param in enumerate(sorted(self._params, key=lambda p: p.name)):
+        for i, param_states in enumerate(sorted(zip(self._params, self._updaters[0].states), key=lambda p: p[0].name)):
+            param = param_states[0]
+            states = param_states[1]
             if param.grad_req != 'null':
-                allreduce_(self._updaters[0].states[i][1], average=True,
+                # allreduce_(self._updaters[0].states[i][1], average=True,
+                allreduce_(states[1], average=True,
                                 name=str(i), priority=-i, 
                                 local_reduction = False, 
                                 cross_only = True)
                 # copy fp32 weight to fp16 weight, assume using hvd with single GPU per process
-                self._updaters[0].states[i][1].copyto(param.list_data()[0])
+                # self._updaters[0].states[i][1].copyto(param.list_data()[0])
+                states[1].copyto(param.list_data()[0])
         # sync mean and var
         # for i, param in reversed(list(enumerate(self._params))):
-        for i, param in reversed(list(enumerate(sorted(self._params, key=lambda p: p.name)))):
+        for i, param_states in reversed(list(enumerate(sorted(zip(self._params, self._updaters[0].states), key=lambda p: p[0].name)))):
+            param = param_states[0]
+            states = param_states[1]
             if param.grad_req != 'null':
-                for j in range(len(self._updaters[0].states[i][0])):
+                # for j in range(len(self._updaters[0].states[i][0])):
+                for j in range(len(states[0])):
                     idx = i+len(self._params)*(j+1)
-                    allreduce_(self._updaters[0].states[i][0][j], average=True,
+                    # allreduce_(self._updaters[0].states[i][0][j], average=True,
+                    allreduce_(states[0][j], average=True,
                                 name=str(idx), priority=-i-len(self._params)*2, 
                                 local_reduction = False, 
                                 cross_only = True)
