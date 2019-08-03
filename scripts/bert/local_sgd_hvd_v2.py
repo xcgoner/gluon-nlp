@@ -105,12 +105,14 @@ class FP16DistributedLocalSGDTrainerV2(hvd.DistributedTrainer):
         # important: only works for bert_adam with fp16 trainer
         # sync params
         # for i, param in enumerate(self._params):
-        for i, param in sorted(list(enumerate(self._params)), key=lambda p: p[1].name):
+        for i, param in reversed(sorted(list(enumerate(self._params)), key=lambda p: p[1].name)):
             if param.grad_req != 'null':
                 allreduce_(self._updaters[0].states[i][1], average=True,
-                                name=str(i), priority=-i, 
+                                name=str(i), priority=i-len(self._params), 
                                 local_reduction = False, 
                                 cross_only = True)
+        for i, param in sorted(list(enumerate(self._params)), key=lambda p: p[1].name):
+            if param.grad_req != 'null':
                 # copy fp32 weight to fp16 weight, assume using hvd with single GPU per process
                 self._updaters[0].states[i][1].copyto(param.list_data()[0])
         # sync mean and var
