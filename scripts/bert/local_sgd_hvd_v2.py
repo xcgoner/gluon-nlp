@@ -108,6 +108,8 @@ class FP16DistributedLocalSGDTrainerV2(hvd.DistributedTrainer):
         for i, param_states in enumerate(sorted(zip(self._params, self._updaters[0].states), key=lambda p: p[0].name)):
             param = param_states[0]
             states = param_states[1]
+            print(type(param))
+            print(type(states))
             if param.grad_req != 'null':
                 # allreduce_(self._updaters[0].states[i][1], average=True,
                 allreduce_(states[1], average=True,
