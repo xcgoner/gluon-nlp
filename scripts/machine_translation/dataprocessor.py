@@ -232,7 +232,6 @@ def make_dataloader(data_train, data_val, data_test, args,
                                                         ratio=args.bucket_ratio,
                                                         shuffle=True,
                                                         use_average_length=use_average_length,
-                                                        num_shards=num_shards,
                                                         bucket_scheme=bucket_scheme, 
                                                         num_parts=num_parts, part_index=part_index)
     else:
