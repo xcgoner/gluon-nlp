@@ -272,7 +272,10 @@ def evaluate(data_loader, context=ctx):
 
 def train():
     """Training function."""
-    trainer = gluon.Trainer(model.collect_params(), args.optimizer,
+    hvd.broadcast_parameters(model.collect_params(), root_rank=0)
+    # trainer = gluon.Trainer(model.collect_params(), args.optimizer,
+    #                         {'learning_rate': args.lr, 'eps': 1e-7})
+    trainer = hvd.DistributedTrainer(model.collect_params(), args.optimizer,
                             {'learning_rate': args.lr, 'eps': 1e-7})
 
     train_data_loader, val_data_loader, test_data_loader \
