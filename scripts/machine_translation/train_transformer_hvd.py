@@ -59,6 +59,8 @@ np.random.seed(100)
 random.seed(100)
 mx.random.seed(10000)
 
+os.environ['MXNET_GPU_MEM_POOL_TYPE'] = 'Round'
+
 parser = argparse.ArgumentParser(description='Neural Machine Translation Example.'
                                              'We train the Transformer Model')
 parser.add_argument('--dataset', type=str, default='WMT2016BPE', help='Dataset to use.')
@@ -131,9 +133,6 @@ parser.add_argument('--log_interval', type=int, default=100, metavar='N',
                     help='report interval')
 parser.add_argument('--save_dir', type=str, default='transformer_out',
                     help='directory path to save the final model and training log')
-parser.add_argument('--gpus', type=str,
-                    help='list of gpus to run, e.g. 0 or 0,2,5. empty means using cpu.'
-                         '(using single gpu is suggested)')
 args = parser.parse_args()
 logging_config(args.save_dir)
 logging.info(args)
@@ -165,10 +164,6 @@ data_val = gluon.data.SimpleDataset([(ele[0], ele[1], len(ele[0]), len(ele[1]), 
                                      for i, ele in enumerate(data_val)])
 data_test = gluon.data.SimpleDataset([(ele[0], ele[1], len(ele[0]), len(ele[1]), i)
                                       for i, ele in enumerate(data_test)])
-
-# ctx = [mx.cpu()] if args.gpus is None or args.gpus == '' else \
-#     [mx.gpu(int(x)) for x in args.gpus.split(',')]
-# num_ctxs = len(ctx)
 
 data_train_lengths, data_val_lengths, data_test_lengths = [dataprocessor.get_data_lengths(x)
                                                            for x in
