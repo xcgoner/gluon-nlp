@@ -204,7 +204,8 @@ def get_data_lengths(dataset):
 
 
 def make_dataloader(data_train, data_val, data_test, args,
-                    use_average_length=False, num_shards=0, num_workers=8):
+                    use_average_length=False, num_shards=0, num_workers=8, 
+                    num_parts=None, part_index=None):
     """Create data loaders for training/validation/test."""
     data_train_lengths = get_data_lengths(data_train)
     data_val_lengths = get_data_lengths(data_val)
@@ -224,14 +225,25 @@ def make_dataloader(data_train, data_val, data_test, args,
         bucket_scheme = nlp.data.ExpWidthBucket(bucket_len_step=1.2)
     else:
         raise NotImplementedError
-    train_batch_sampler = nlp.data.FixedBucketSampler(lengths=data_train_lengths,
-                                                      batch_size=args.batch_size,
-                                                      num_buckets=args.num_buckets,
-                                                      ratio=args.bucket_ratio,
-                                                      shuffle=True,
-                                                      use_average_length=use_average_length,
-                                                      num_shards=num_shards,
-                                                      bucket_scheme=bucket_scheme)
+    if num_parts is not None and part_index is not None:
+        train_batch_sampler = nlp.data.SplitFixedBucketSampler(lengths=data_train_lengths,
+                                                        batch_size=args.batch_size,
+                                                        num_buckets=args.num_buckets,
+                                                        ratio=args.bucket_ratio,
+                                                        shuffle=True,
+                                                        use_average_length=use_average_length,
+                                                        num_shards=num_shards,
+                                                        bucket_scheme=bucket_scheme, 
+                                                        num_parts=num_parts, part_index=part_index)
+    else:
+        train_batch_sampler = nlp.data.FixedBucketSampler(lengths=data_train_lengths,
+                                                        batch_size=args.batch_size,
+                                                        num_buckets=args.num_buckets,
+                                                        ratio=args.bucket_ratio,
+                                                        shuffle=True,
+                                                        use_average_length=use_average_length,
+                                                        num_shards=num_shards,
+                                                        bucket_scheme=bucket_scheme)
     logging.info('Train Batch Sampler:\n%s', train_batch_sampler.stats())
     train_data_loader = nlp.data.ShardedDataLoader(data_train,
                                                    batch_sampler=train_batch_sampler,

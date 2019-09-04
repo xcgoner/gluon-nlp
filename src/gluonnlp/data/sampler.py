@@ -438,6 +438,46 @@ class FixedBucketSampler(Sampler):
                     bucket_batch_sizes=self._bucket_batch_sizes)
         return ret
 
+class SplitFixedBucketSampler(FixedBucketSampler):
+    def __init__(self, lengths, batch_size, num_buckets=10, bucket_keys=None,
+                 ratio=0, shuffle=False, use_average_length=False, num_shards=0,
+                 bucket_scheme=ConstWidthBucket(), 
+                 num_parts=1, part_index=0):
+        super(SplitFixedBucketSampler, self).__init__(lengths, batch_size, num_buckets=num_buckets, bucket_keys=bucket_keys,
+                 ratio=ratio, shuffle=shuffle, use_average_length=use_average_length, num_shards=0,
+                 bucket_scheme=bucket_scheme)
+        self._num_parts = num_parts
+        self._part_index = part_index
+
+    def __iter__(self):
+        if self._shuffle:
+            np.random.shuffle(self._batch_infos)
+            for bucket_id in range(len(self._bucket_keys)):
+                np.random.shuffle(self._bucket_sample_ids[bucket_id])
+
+        if self._num_shards > 0:
+            for batch_idx in range(0, len(self._batch_infos), self._num_shards):
+                if batch_idx + self._num_shards > len(self._batch_infos):
+                    batch_idx = len(self._batch_infos) - self._num_shards
+                batch = self._batch_infos[batch_idx: batch_idx + self._num_shards]
+                bucket_ids, batch_begins = list(zip(*batch))
+                batch_sizes = [self._bucket_batch_sizes[bucket_id] for bucket_id in bucket_ids]
+                batch_ends = [min(batch_begin + batch_size,
+                                  len(self._bucket_sample_ids[bucket_id]))
+                              for bucket_id, batch_begin, batch_size in zip(bucket_ids,
+                                                                            batch_begins,
+                                                                            batch_sizes)]
+                yield [self._bucket_sample_ids[bucket_id][batch_begin:batch_end]
+                       for bucket_id, batch_begin, batch_end in zip(bucket_ids,
+                                                                    batch_begins,
+                                                                    batch_ends)]
+        else:
+            for bucket_id, batch_begin in self._batch_infos:
+                batch_size = self._bucket_batch_sizes[bucket_id]
+                batch_end = min(batch_begin + batch_size, len(self._bucket_sample_ids[bucket_id]))
+                print((bucket_id, batch_begin, batch_end))
+                yield self._bucket_sample_ids[bucket_id][batch_begin:batch_end]
+
 
 class SortedBucketSampler(Sampler):
     r"""Batches are sampled from sorted buckets of data.
