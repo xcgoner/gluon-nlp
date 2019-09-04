@@ -276,8 +276,8 @@ def train():
 
     train_data_loader, val_data_loader, test_data_loader \
         = dataprocessor.make_dataloader(data_train, data_val, data_test, args,
-                                        use_average_length=True, num_shards=0, 
-                                        num_parts=1, part_index=0)
+                                        use_average_length=True, 
+                                        num_parts=num_workers, part_index=rank)
 
     if args.bleu == 'tweaked':
         bpe = bool(args.dataset != 'IWSLT2015' and args.dataset != 'TOY')
