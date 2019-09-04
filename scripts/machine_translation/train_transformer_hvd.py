@@ -272,7 +272,7 @@ def evaluate(data_loader, context=ctx):
 def train():
     """Training function."""
     trainer = gluon.Trainer(model.collect_params(), args.optimizer,
-                            {'learning_rate': args.lr, 'beta2': 0.98, 'epsilon': 1e-9})
+                            {'learning_rate': args.lr, 'epsilon': 1})
 
     train_data_loader, val_data_loader, test_data_loader \
         = dataprocessor.make_dataloader(data_train, data_val, data_test, args,
