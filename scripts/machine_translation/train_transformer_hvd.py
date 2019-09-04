@@ -151,6 +151,8 @@ rank = hvd.rank()
 local_rank = hvd.local_rank()
 is_master_node = rank == local_rank
 
+from hvd_ada_trainer import DistributedHvdAdaTrainer
+
 ctx = mx.gpu(local_rank)
 
 
@@ -275,8 +277,9 @@ def train():
     hvd.broadcast_parameters(model.collect_params(), root_rank=0)
     # trainer = gluon.Trainer(model.collect_params(), args.optimizer,
     #                         {'learning_rate': args.lr, 'eps': 1e-7})
-    trainer = hvd.DistributedTrainer(model.collect_params(), args.optimizer,
-                            {'learning_rate': args.lr, 'eps': 1e-7})
+    trainer = DistributedHvdAdaTrainer(model.collect_params(), args.optimizer,
+                            {'learning_rate': args.lr, 'eps': 1e-7}, 
+                            average=False)
 
     train_data_loader, val_data_loader, test_data_loader \
         = dataprocessor.make_dataloader(data_train, data_val, data_test, args,
@@ -340,7 +343,9 @@ def train():
                 if average_param_dict is None:
                     average_param_dict = {k: v.data(ctx).copy() for k, v in
                                           model.collect_params().items()}
-                trainer.step(float(loss_denom) / args.batch_size / 100.0)
+                loss_denom_nd = mx.nd.array([float(loss_denom)])
+                hvd.allreduce_(loss_denom_nd, average=True, name='loss_denom_nd', priority=0)
+                trainer.step(loss_denom_nd.asscalar() / args.batch_size / 100.0)
                 param_dict = model.collect_params()
                 param_dict.zero_grad()
                 if step_num > average_start:
