@@ -108,15 +108,15 @@ parser.add_argument('--num_accumulated', type=int, default=1,
                          'This is useful to mimic large batch training with limited gpu memory')
 parser.add_argument('--magnitude', type=float, default=3.0,
                     help='Magnitude of Xavier initialization')
-# parser.add_argument('--average_checkpoint', action='store_true',
-#                     help='Turn on to perform final testing based on '
-#                          'the average of last few checkpoints')
-# parser.add_argument('--num_averages', type=int, default=5,
-#                     help='Perform final testing based on the '
-#                          'average of last num_averages checkpoints. '
-#                          'This is only used if average_checkpoint is True')
-# parser.add_argument('--average_start', type=int, default=5,
-#                     help='Perform average SGD on last average_start epochs')
+parser.add_argument('--average_checkpoint', action='store_true',
+                    help='Turn on to perform final testing based on '
+                         'the average of last few checkpoints')
+parser.add_argument('--num_averages', type=int, default=5,
+                    help='Perform final testing based on the '
+                         'average of last num_averages checkpoints. '
+                         'This is only used if average_checkpoint is True')
+parser.add_argument('--average_start', type=int, default=5,
+                    help='Perform average SGD on last average_start epochs')
 parser.add_argument('--full', action='store_true',
                     help='In default, we use the test dataset in'
                          ' http://statmt.org/wmt14/test-filtered.tgz.'
@@ -295,8 +295,8 @@ def train():
     warmup_steps = args.warmup_steps
     grad_interval = args.num_accumulated
     model.collect_params().setattr('grad_req', 'add')
-    # average_start = (len(train_data_loader) // grad_interval) * (args.epochs - args.average_start)
-    # average_param_dict = None
+    average_start = (len(train_data_loader) // grad_interval) * (args.epochs - args.average_start)
+    average_param_dict = None
     model.collect_params().zero_grad()
     # parallel = Parallel(num_ctxs, parallel_model)
     for epoch_id in range(args.epochs):
@@ -333,16 +333,16 @@ def train():
             loss_denom += tgt_wc - bs
             if batch_id % grad_interval == grad_interval - 1 or\
                     batch_id == len(train_data_loader) - 1:
-                # if average_param_dict is None:
-                #     average_param_dict = {k: v.data(ctx).copy() for k, v in
-                #                           model.collect_params().items()}
+                if average_param_dict is None:
+                    average_param_dict = {k: v.data(ctx).copy() for k, v in
+                                          model.collect_params().items()}
                 trainer.step(float(loss_denom) / args.batch_size / 100.0)
                 param_dict = model.collect_params()
                 param_dict.zero_grad()
-                # if step_num > average_start:
-                #     alpha = 1. / max(1, step_num - average_start)
-                #     for name, average_param in average_param_dict.items():
-                #         average_param[:] += alpha * (param_dict[name].data(ctx) - average_param)
+                if step_num > average_start:
+                    alpha = 1. / max(1, step_num - average_start)
+                    for name, average_param in average_param_dict.items():
+                        average_param[:] += alpha * (param_dict[name].data(ctx) - average_param)
             step_loss += ls.asscalar()
             if batch_id % grad_interval == grad_interval - 1 or\
                     batch_id == len(train_data_loader) - 1:
@@ -362,53 +362,57 @@ def train():
                 log_avg_loss = 0
                 log_wc = 0
         mx.nd.waitall()
-        valid_loss, valid_translation_out = evaluate(val_data_loader, ctx)
-        valid_bleu_score, _, _, _, _ = compute_bleu([val_tgt_sentences], valid_translation_out,
+        if epoch_id >= 5:
+            valid_loss, valid_translation_out = evaluate(val_data_loader, ctx)
+            valid_bleu_score, _, _, _, _ = compute_bleu([val_tgt_sentences], valid_translation_out,
+                                                        tokenized=tokenized, tokenizer=args.bleu,
+                                                        split_compound_word=split_compound_word,
+                                                        bpe=bpe)
+            logging.info('[Epoch {}] valid Loss={:.4f}, valid ppl={:.4f}, valid bleu={:.2f}'
+                        .format(epoch_id, valid_loss, np.exp(valid_loss), valid_bleu_score * 100))
+            test_loss, test_translation_out = evaluate(test_data_loader, ctx)
+            test_bleu_score, _, _, _, _ = compute_bleu([test_tgt_sentences], test_translation_out,
                                                     tokenized=tokenized, tokenizer=args.bleu,
                                                     split_compound_word=split_compound_word,
                                                     bpe=bpe)
-        logging.info('[Epoch {}] valid Loss={:.4f}, valid ppl={:.4f}, valid bleu={:.2f}'
-                     .format(epoch_id, valid_loss, np.exp(valid_loss), valid_bleu_score * 100))
-        test_loss, test_translation_out = evaluate(test_data_loader, ctx)
-        test_bleu_score, _, _, _, _ = compute_bleu([test_tgt_sentences], test_translation_out,
-                                                   tokenized=tokenized, tokenizer=args.bleu,
-                                                   split_compound_word=split_compound_word,
-                                                   bpe=bpe)
-        logging.info('[Epoch {}] test Loss={:.4f}, test ppl={:.4f}, test bleu={:.2f}'
-                     .format(epoch_id, test_loss, np.exp(test_loss), test_bleu_score * 100))
-        dataprocessor.write_sentences(valid_translation_out,
-                                      os.path.join(args.save_dir,
-                                                   'epoch{:d}_valid_out.txt').format(epoch_id))
-        dataprocessor.write_sentences(test_translation_out,
-                                      os.path.join(args.save_dir,
-                                                   'epoch{:d}_test_out.txt').format(epoch_id))
-        if valid_bleu_score > best_valid_bleu:
-            best_valid_bleu = valid_bleu_score
-            save_path = os.path.join(args.save_dir, 'valid_best.params')
-            logging.info('Save best parameters to {}'.format(save_path))
+            logging.info('[Epoch {}] test Loss={:.4f}, test ppl={:.4f}, test bleu={:.2f}'
+                        .format(epoch_id, test_loss, np.exp(test_loss), test_bleu_score * 100))
+            dataprocessor.write_sentences(valid_translation_out,
+                                        os.path.join(args.save_dir,
+                                                    'epoch{:d}_valid_out.txt').format(epoch_id))
+            dataprocessor.write_sentences(test_translation_out,
+                                        os.path.join(args.save_dir,
+                                                    'epoch{:d}_test_out.txt').format(epoch_id))
+            if local_rank == 0:
+                if valid_bleu_score > best_valid_bleu:
+                    best_valid_bleu = valid_bleu_score
+                    save_path = os.path.join(args.save_dir, 'valid_best.params')
+                    logging.info('Save best parameters to {}'.format(save_path))
+                    model.save_parameters(save_path)
+                save_path = os.path.join(args.save_dir, 'epoch{:d}.params'.format(epoch_id))
+                model.save_parameters(save_path)
+    save_path = os.path.join(args.save_dir, 'average.params')
+    if local_rank == 0:
+        mx.nd.save(save_path, average_param_dict)
+    if args.average_checkpoint:
+        for j in range(args.num_averages):
+            params = mx.nd.load(os.path.join(args.save_dir,
+                                             'epoch{:d}.params'.format(args.epochs - j - 1)))
+            alpha = 1. / (j + 1)
+            for k, v in model._collect_params_with_prefix().items():
+                v.data(ctx)[:] += alpha * (params[k].as_in_context(ctx) - v.data(ctx))
+        save_path = os.path.join(args.save_dir,
+                                 'average_checkpoint_{}.params'.format(args.num_averages))
+        if local_rank == 0:
             model.save_parameters(save_path)
-        save_path = os.path.join(args.save_dir, 'epoch{:d}.params'.format(epoch_id))
-        model.save_parameters(save_path)
-    # save_path = os.path.join(args.save_dir, 'average.params')
-    # mx.nd.save(save_path, average_param_dict)
-    # if args.average_checkpoint:
-    #     for j in range(args.num_averages):
-    #         params = mx.nd.load(os.path.join(args.save_dir,
-    #                                          'epoch{:d}.params'.format(args.epochs - j - 1)))
-    #         alpha = 1. / (j + 1)
-    #         for k, v in model._collect_params_with_prefix().items():
-    #             v.data(ctx)[:] += alpha * (params[k].as_in_context(ctx) - v.data(ctx))
-    #     save_path = os.path.join(args.save_dir,
-    #                              'average_checkpoint_{}.params'.format(args.num_averages))
-    #     model.save_parameters(save_path)
-    # elif args.average_start > 0:
-    #     for k, v in model.collect_params().items():
-    #         v.set_data(average_param_dict[k])
-    #     save_path = os.path.join(args.save_dir, 'average.params')
-    #     model.save_parameters(save_path)
-    # else:
-    #     model.load_parameters(os.path.join(args.save_dir, 'valid_best.params'), ctx)
-    model.load_parameters(os.path.join(args.save_dir, 'valid_best.params'), ctx)
+    elif args.average_start > 0:
+        for k, v in model.collect_params().items():
+            v.set_data(average_param_dict[k])
+        save_path = os.path.join(args.save_dir, 'average.params')
+        if local_rank == 0:
+            model.save_parameters(save_path)
+    else:
+        model.load_parameters(os.path.join(args.save_dir, 'valid_best.params'), ctx)
     valid_loss, valid_translation_out = evaluate(val_data_loader, ctx)
     valid_bleu_score, _, _, _, _ = compute_bleu([val_tgt_sentences], valid_translation_out,
                                                 tokenized=tokenized, tokenizer=args.bleu, bpe=bpe,
