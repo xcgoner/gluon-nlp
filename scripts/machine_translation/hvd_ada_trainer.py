@@ -38,7 +38,7 @@ class DistributedHvdAdaTrainer(mx.gluon.Trainer):
             warnings.warn("DistributedHvdAdaTrainer does not take DistributedHvdAdaTrainer "
                           "as its optimizer. We have unwrapped it for you.")
 
-        super(DistributedTrainer, self).__init__(
+        super(DistributedHvdAdaTrainer, self).__init__(
             params, optimizer, optimizer_params=optimizer_params, kvstore=None)
 
         # _scale is used to check and set rescale_grad for optimizer in Trainer.step()
