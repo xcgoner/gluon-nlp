@@ -99,7 +99,7 @@ parser.add_argument('--src_max_len', type=int, default=-1, help='Maximum length 
                                                                 'sentence, -1 means no clipping')
 parser.add_argument('--tgt_max_len', type=int, default=-1, help='Maximum length of the target '
                                                                 'sentence, -1 means no clipping')
-parser.add_argument('--optimizer', type=str, default='adam', help='optimization algorithm')
+parser.add_argument('--optimizer', type=str, default='adagrad', help='optimization algorithm')
 parser.add_argument('--lr', type=float, default=1.0, help='Initial learning rate')
 parser.add_argument('--warmup_steps', type=float, default=4000,
                     help='number of warmup steps used in NOAM\'s stepsize schedule')
