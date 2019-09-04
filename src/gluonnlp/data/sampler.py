@@ -468,9 +468,6 @@ class SplitFixedBucketSampler(FixedBucketSampler):
                                                                         batch_sizes)]
             # print((bucket_ids[self._part_index], batch_begins[self._part_index], batch_ends[self._part_index]))
             yield self._bucket_sample_ids[bucket_ids[self._part_index]][batch_begins[self._part_index]:batch_ends[self._part_index]]
-    
-    def stats(self):
-        return ''
 
 
 class SortedBucketSampler(Sampler):
