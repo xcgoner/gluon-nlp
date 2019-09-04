@@ -319,7 +319,7 @@ def train():
             # for seq in seqs:
             #     parallel.put((seq, args.batch_size))
             # Ls = [parallel.get() for _ in range(len(ctx))]
-            (src_seq, tgt_seq, src_valid_length, tgt_valid_length), batch_size = (seq, args.batch_size)
+            (src_seq, tgt_seq, src_valid_length, tgt_valid_length), batch_size = (seqs, args.batch_size)
             with mx.autograd.record():
                 out, _ = model(src_seq, tgt_seq[:, :-1],
                                     src_valid_length, tgt_valid_length - 1)
