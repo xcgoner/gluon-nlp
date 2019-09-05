@@ -339,38 +339,44 @@ def train():
             src_wc = src_wc.asscalar()
             tgt_wc = tgt_wc.asscalar()
             loss_denom += tgt_wc - bs
+            step_loss += ls.asscalar()
             if batch_id % grad_interval == grad_interval - 1 or\
                     batch_id == len(train_data_loader) - 1:
                 if average_param_dict is None:
                     average_param_dict = {k: v.data(ctx).copy() for k, v in
                                           model.collect_params().items()}
-                loss_denom_nd = mx.nd.array([float(loss_denom)]).as_in_context(ctx)
+                loss_denom_nd = mx.nd.array([float(loss_denom), float(step_loss)]).as_in_context(ctx)
                 hvd.allreduce_(loss_denom_nd, average=False, name='loss_denom_nd', priority=0)
+                loss_denom_np = loss_denom_nd.asnumpy()
+                loss_denom = np.asscalar(loss_denom_np[0])
+                step_loss = np.asscalar(loss_denom_np[1])
                 # debug
                 if rank == 0:
-                    logging.info('[Epoch {} Batch {}/{}] loss_denom={:.4f}'.format(epoch_id, batch_id + 1, len(train_data_loader), loss_denom_nd.asscalar()))
-                trainer.step(loss_denom_nd.asscalar() / args.batch_size / 100.0)
+                    logging.info('[Epoch {} Batch {}/{}] step_loss={:.4f}, loss_denom={:.4f}'.format(epoch_id, batch_id + 1, len(train_data_loader), step_loss, loss_denom))
+                trainer.step(loss_denom / args.batch_size / 100.0)
                 param_dict = model.collect_params()
                 param_dict.zero_grad()
                 if step_num > average_start:
                     alpha = 1. / max(1, step_num - average_start)
                     for name, average_param in average_param_dict.items():
                         average_param[:] += alpha * (param_dict[name].data(ctx) - average_param)
-            step_loss += ls.asscalar()
-            if batch_id % grad_interval == grad_interval - 1 or\
-                    batch_id == len(train_data_loader) - 1:
                 log_avg_loss += step_loss / loss_denom * args.batch_size * 100.0
                 loss_denom = 0
                 step_loss = 0
+            # if batch_id % grad_interval == grad_interval - 1 or\
+            #         batch_id == len(train_data_loader) - 1:
+            #     log_avg_loss += step_loss / loss_denom * args.batch_size * 100.0
+            #     loss_denom = 0
+            #     step_loss = 0
             log_wc += src_wc + tgt_wc
             if (batch_id + 1) % (args.log_interval * grad_interval) == 0:
                 wps = log_wc / (time.time() - log_start_time)
-                # logging.info('[Epoch {} Batch {}/{}] loss={:.4f}, ppl={:.4f}, '
-                #              'throughput={:.2f}K wps, wc={:.2f}K'
-                #              .format(epoch_id, batch_id + 1, len(train_data_loader),
-                #                      log_avg_loss / args.log_interval,
-                #                      np.exp(log_avg_loss / args.log_interval),
-                #                      wps / 1000, log_wc / 1000))
+                logging.info('[Epoch {} Batch {}/{}] loss={:.4f}, ppl={:.4f}, '
+                             'throughput={:.2f}K wps, wc={:.2f}K'
+                             .format(epoch_id, batch_id + 1, len(train_data_loader),
+                                     log_avg_loss / args.log_interval,
+                                     np.exp(log_avg_loss / args.log_interval),
+                                     wps / 1000, log_wc / 1000))
                 log_start_time = time.time()
                 log_avg_loss = 0
                 log_wc = 0
