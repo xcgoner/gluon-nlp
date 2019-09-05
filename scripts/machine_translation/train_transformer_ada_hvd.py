@@ -348,7 +348,7 @@ def train():
                 hvd.allreduce_(loss_denom_nd, average=False, name='loss_denom_nd', priority=0)
                 # debug
                 if rank == 0:
-                    logging.info('[Epoch {} Batch {}/{}] loss_denom={:.4f}'.format(epoch_id, batch_id + 1, len(train_data_loader), float(loss_denom_nd)))
+                    logging.info('[Epoch {} Batch {}/{}] loss_denom={:.4f}'.format(epoch_id, batch_id + 1, len(train_data_loader), loss_denom_nd.asscalar()))
                 trainer.step(loss_denom_nd.asscalar() / args.batch_size / 100.0)
                 param_dict = model.collect_params()
                 param_dict.zero_grad()
