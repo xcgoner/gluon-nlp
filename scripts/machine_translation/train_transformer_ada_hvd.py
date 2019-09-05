@@ -348,11 +348,11 @@ def train():
                 loss_denom_nd = mx.nd.array([float(loss_denom), float(step_loss)]).as_in_context(ctx)
                 hvd.allreduce_(loss_denom_nd, average=False, name='loss_denom_nd', priority=0)
                 loss_denom_np = loss_denom_nd.asnumpy()
-                loss_denom = np.asscalar(loss_denom_np[0])
-                step_loss = np.asscalar(loss_denom_np[1])
+                loss_denom = loss_denom_np[0]
+                step_loss = loss_denom_np[1]
                 # debug
                 if rank == 0:
-                    logging.info('[Epoch {} Batch {}/{}] step_loss={:.4f}, loss_denom={:.4f}'.format(epoch_id, batch_id + 1, len(train_data_loader), step_loss, loss_denom))
+                    logging.info('[Epoch {} Batch {}/{}] step_loss={:.4f}, loss_denom={:.4f}'.format(epoch_id, batch_id + 1, len(train_data_loader), float(step_loss), float(loss_denom)))
                 trainer.step(loss_denom / args.batch_size / 100.0)
                 param_dict = model.collect_params()
                 param_dict.zero_grad()
