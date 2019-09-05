@@ -319,7 +319,7 @@ def train():
                     average_param_dict = {k: v.data(ctx[0]).copy() for k, v in
                                           model.collect_params().items()}
                 # debug
-                logging.info('[Epoch {} Batch {}/{}] loss_denom={:.4f}'.format(epoch_id, batch_id + 1, float(loss_denom)))
+                logging.info('[Epoch {} Batch {}/{}] loss_denom={:.4f}'.format(epoch_id, batch_id + 1, len(train_data_loader), float(loss_denom)))
                 trainer.step(float(loss_denom) / args.batch_size / 100.0)
                 param_dict = model.collect_params()
                 param_dict.zero_grad()
