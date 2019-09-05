@@ -350,9 +350,9 @@ def train():
                 loss_denom_np = loss_denom_nd.asnumpy()
                 loss_denom = loss_denom_np[0]
                 step_loss = loss_denom_np[1]
-                # debug
-                if rank == 0:
-                    logging.info('[Epoch {} Batch {}/{}] step_loss={:.4f}, loss_denom={:.4f}'.format(epoch_id, batch_id + 1, len(train_data_loader), float(step_loss), float(loss_denom)))
+                # # debug
+                # if rank == 0:
+                #     logging.info('[Epoch {} Batch {}/{}] step_loss={:.4f}, loss_denom={:.4f}'.format(epoch_id, batch_id + 1, len(train_data_loader), float(step_loss), float(loss_denom)))
                 trainer.step(loss_denom / args.batch_size / 100.0)
                 param_dict = model.collect_params()
                 param_dict.zero_grad()
@@ -371,12 +371,12 @@ def train():
             log_wc += src_wc + tgt_wc
             if (batch_id + 1) % (args.log_interval * grad_interval) == 0:
                 wps = log_wc / (time.time() - log_start_time)
-                # logging.info('[Epoch {} Batch {}/{}] loss={:.4f}, ppl={:.4f}, '
-                #              'throughput={:.2f}K wps, wc={:.2f}K'
-                #              .format(epoch_id, batch_id + 1, len(train_data_loader),
-                #                      log_avg_loss / args.log_interval,
-                #                      np.exp(log_avg_loss / args.log_interval),
-                #                      wps / 1000, log_wc / 1000))
+                logging.info('[Epoch {} Batch {}/{}] loss={:.4f}, ppl={:.4f}, '
+                             'throughput={:.2f}K wps, wc={:.2f}K'
+                             .format(epoch_id, batch_id + 1, len(train_data_loader),
+                                     log_avg_loss / args.log_interval,
+                                     np.exp(log_avg_loss / args.log_interval),
+                                     wps / 1000, log_wc / 1000))
                 log_start_time = time.time()
                 log_avg_loss = 0
                 log_wc = 0
