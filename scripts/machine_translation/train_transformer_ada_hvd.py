@@ -346,6 +346,9 @@ def train():
                                           model.collect_params().items()}
                 loss_denom_nd = mx.nd.array([float(loss_denom)]).as_in_context(ctx)
                 hvd.allreduce_(loss_denom_nd, average=False, name='loss_denom_nd', priority=0)
+                # debug
+                if rank == 0:
+                    logging.info('[Epoch {} Batch {}/{}] loss_denom={:.4f}'.format(epoch_id, batch_id + 1, float(loss_denom_nd)))
                 trainer.step(loss_denom_nd.asscalar() / args.batch_size / 100.0)
                 param_dict = model.collect_params()
                 param_dict.zero_grad()
@@ -362,12 +365,12 @@ def train():
             log_wc += src_wc + tgt_wc
             if (batch_id + 1) % (args.log_interval * grad_interval) == 0:
                 wps = log_wc / (time.time() - log_start_time)
-                logging.info('[Epoch {} Batch {}/{}] loss={:.4f}, ppl={:.4f}, '
-                             'throughput={:.2f}K wps, wc={:.2f}K'
-                             .format(epoch_id, batch_id + 1, len(train_data_loader),
-                                     log_avg_loss / args.log_interval,
-                                     np.exp(log_avg_loss / args.log_interval),
-                                     wps / 1000, log_wc / 1000))
+                # logging.info('[Epoch {} Batch {}/{}] loss={:.4f}, ppl={:.4f}, '
+                #              'throughput={:.2f}K wps, wc={:.2f}K'
+                #              .format(epoch_id, batch_id + 1, len(train_data_loader),
+                #                      log_avg_loss / args.log_interval,
+                #                      np.exp(log_avg_loss / args.log_interval),
+                #                      wps / 1000, log_wc / 1000))
                 log_start_time = time.time()
                 log_avg_loss = 0
                 log_wc = 0

@@ -318,6 +318,8 @@ def train():
                 if average_param_dict is None:
                     average_param_dict = {k: v.data(ctx[0]).copy() for k, v in
                                           model.collect_params().items()}
+                # debug
+                logging.info('[Epoch {} Batch {}/{}] loss_denom={:.4f}'.format(epoch_id, batch_id + 1, float(loss_denom)))
                 trainer.step(float(loss_denom) / args.batch_size / 100.0)
                 param_dict = model.collect_params()
                 param_dict.zero_grad()
@@ -334,12 +336,12 @@ def train():
             log_wc += src_wc + tgt_wc
             if (batch_id + 1) % (args.log_interval * grad_interval) == 0:
                 wps = log_wc / (time.time() - log_start_time)
-                logging.info('[Epoch {} Batch {}/{}] loss={:.4f}, ppl={:.4f}, '
-                             'throughput={:.2f}K wps, wc={:.2f}K'
-                             .format(epoch_id, batch_id + 1, len(train_data_loader),
-                                     log_avg_loss / args.log_interval,
-                                     np.exp(log_avg_loss / args.log_interval),
-                                     wps / 1000, log_wc / 1000))
+                # logging.info('[Epoch {} Batch {}/{}] loss={:.4f}, ppl={:.4f}, '
+                #              'throughput={:.2f}K wps, wc={:.2f}K'
+                #              .format(epoch_id, batch_id + 1, len(train_data_loader),
+                #                      log_avg_loss / args.log_interval,
+                #                      np.exp(log_avg_loss / args.log_interval),
+                #                      wps / 1000, log_wc / 1000))
                 log_start_time = time.time()
                 log_avg_loss = 0
                 log_wc = 0
