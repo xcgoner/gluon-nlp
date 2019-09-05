@@ -345,7 +345,7 @@ def train():
                     average_param_dict = {k: v.data(ctx).copy() for k, v in
                                           model.collect_params().items()}
                 loss_denom_nd = mx.nd.array([float(loss_denom)])
-                hvd.allreduce_(loss_denom_nd, average=True, name='loss_denom_nd', priority=0)
+                hvd.allreduce_(loss_denom_nd, average=False, name='loss_denom_nd', priority=0)
                 trainer.step(loss_denom_nd.asscalar() / args.batch_size / 100.0)
                 param_dict = model.collect_params()
                 param_dict.zero_grad()
