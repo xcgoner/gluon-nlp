@@ -317,7 +317,7 @@ def train():
             if batch_id % grad_interval == 0:
                 step_num += 1
                 new_lr = args.lr / math.sqrt(args.num_units) \
-                         * min(1. / math.sqrt(step_num), step_num * warmup_steps ** (-1.5))
+                         * min(1. , step_num * warmup_steps ** (-1.5))
                 trainer.set_learning_rate(new_lr)
             src_wc, tgt_wc, bs = seqs[2].sum(), seqs[3].sum(), seqs[0].shape[0]
             seqs = [seq.as_in_context(ctx) for seq in seqs]
