@@ -71,7 +71,7 @@ parser.add_argument('--hidden_size', type=int, default=2048,
                     help='Dimension of the hidden state in position-wise feed-forward networks.')
 parser.add_argument('--dropout', type=float, default=0.1,
                     help='dropout applied to layers (0 = no dropout)')
-parser.add_argument('--eps', type=float, default=1e-19,
+parser.add_argument('--epsilon', type=float, default=1e-19,
                     help='epsilon parameter for label smoothing')
 parser.add_argument('--num_layers', type=int, default=6,
                     help='number of layers in the encoder and decoder')
@@ -99,6 +99,7 @@ parser.add_argument('--tgt_max_len', type=int, default=-1, help='Maximum length 
                                                                 'sentence, -1 means no clipping')
 parser.add_argument('--optimizer', type=str, default='adagrad', help='optimization algorithm')
 parser.add_argument('--lr', type=float, default=1.0, help='Initial learning rate')
+parser.add_argument('--eps', type=float, default=1e-7, help='Epsilon of adagrad')
 parser.add_argument('--warmup_steps', type=float, default=4000,
                     help='number of warmup steps used in NOAM\'s stepsize schedule')
 parser.add_argument('--num_accumulated', type=int, default=1,
