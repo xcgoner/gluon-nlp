@@ -278,7 +278,7 @@ def train():
     # trainer = gluon.Trainer(model.collect_params(), args.optimizer,
     #                         {'learning_rate': args.lr, 'eps': 1e-7})
     trainer = DistributedHvdAdaTrainer(model.collect_params(), args.optimizer,
-                            {'learning_rate': args.lr, 'eps': 1e-7}, 
+                            {'learning_rate': args.lr, 'eps': args.eps}, 
                             average=False)
 
     train_data_loader, val_data_loader, test_data_loader \
@@ -316,6 +316,7 @@ def train():
                 in enumerate(train_data_loader):
             if batch_id % grad_interval == 0:
                 step_num += 1
+                # do not decay for adagrad
                 new_lr = args.lr / math.sqrt(args.num_units) \
                          * min(1. , step_num * warmup_steps ** (-1.5))
                 trainer.set_learning_rate(new_lr)
