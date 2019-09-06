@@ -300,7 +300,7 @@ def train():
             if batch_id % grad_interval == 0:
                 step_num += 1
                 new_lr = args.lr / math.sqrt(args.num_units) \
-                         * min(1., step_num * warmup_steps ** (-1.5))
+                         * min(1., 1.0 * warmup_steps / step_num)
                 trainer.set_learning_rate(new_lr)
             src_wc, tgt_wc, bs = np.sum([(shard[2].sum(), shard[3].sum(), shard[0].shape[0])
                                          for shard in seqs], axis=0)
