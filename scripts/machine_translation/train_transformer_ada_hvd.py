@@ -274,7 +274,7 @@ def evaluate(data_loader, context=ctx):
 
 def train():
     """Training function."""
-    hvd.broadcast_parameters(model.collect_params(), root_rank=0)
+    # hvd.broadcast_parameters(model.collect_params(), root_rank=0)
     # trainer = gluon.Trainer(model.collect_params(), args.optimizer,
     #                         {'learning_rate': args.lr, 'eps': 1e-7})
     trainer = DistributedHvdAdaTrainer(model.collect_params(), args.optimizer,
