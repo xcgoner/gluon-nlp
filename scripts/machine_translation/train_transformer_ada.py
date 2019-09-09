@@ -316,7 +316,8 @@ def train():
             step_loss += sum([L.asscalar() for L in Ls])
 
             # debug
-            logging.info('[Epoch {} Batch {}/{}], src_wc={}, tgt_wc={}, bs={}, ls={}'.format(epoch_id, batch_id + 1, len(train_data_loader), src_wc, tgt_wc, bs, sum([L.asscalar() for L in Ls])))
+            logging.info('[Epoch {} Batch {}/{}], src_wc={}, tgt_wc={}, bs={}, ls={}'.format(epoch_id, batch_id + 1, len(train_data_loader), src_wc, tgt_wc, bs))
+            logging.info('[Epoch {} Batch {}/{}], ls={}'.format(epoch_id, batch_id + 1, len(train_data_loader), [L.asscalar() for L in Ls]))
 
             if batch_id % grad_interval == grad_interval - 1 or\
                     batch_id == len(train_data_loader) - 1:
