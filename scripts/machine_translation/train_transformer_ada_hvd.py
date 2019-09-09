@@ -336,6 +336,11 @@ def train():
                 ls = (ls * (tgt_seq.shape[1] - 1)) / batch_size / rescale_loss
             ls.backward()
 
+            src_wc = src_wc.asscalar()
+            tgt_wc = tgt_wc.asscalar()
+            loss_denom += tgt_wc - bs
+            step_loss += ls.asscalar()
+
             # debug
             debug_array_1 = mx.nd.array([int(src_wc), int(tgt_wc), bs])
             hvd.allreduce_(debug_array_1, average=False, name='debug_array_1', priority=0)
@@ -344,10 +349,6 @@ def train():
                 logging.info('[Epoch {} Batch {}/{}], src_wc={}, tgt_wc={}, bs={}'.format(epoch_id, batch_id + 1, len(train_data_loader), debug_array_1_np[0], debug_array_1_np[1], debug_array_1_np[2]))
             # logging.info('[Epoch {} Batch {}/{}], ls={}'.format(epoch_id, batch_id + 1, len(train_data_loader), ls))
 
-            src_wc = src_wc.asscalar()
-            tgt_wc = tgt_wc.asscalar()
-            loss_denom += tgt_wc - bs
-            step_loss += ls.asscalar()
             if batch_id % grad_interval == grad_interval - 1 or\
                     batch_id == len(train_data_loader) - 1:
                 if average_param_dict is None:
