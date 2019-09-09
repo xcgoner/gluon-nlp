@@ -336,6 +336,9 @@ def train():
                 ls = (ls * (tgt_seq.shape[1] - 1)) / batch_size / rescale_loss
             ls.backward()
 
+            # debug
+            print('ls={.4f}'.format(ls))
+
             src_wc = src_wc.asscalar()
             tgt_wc = tgt_wc.asscalar()
             loss_denom += tgt_wc - bs
