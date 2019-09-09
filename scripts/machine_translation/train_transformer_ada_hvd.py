@@ -337,11 +337,12 @@ def train():
             ls.backward()
 
             # debug
-            debug_array_1 = mx.nd.array([src_wc, tgt_wc, bs.asscalar()])
+            debug_array_1 = mx.nd.array([int(src_wc), int(tgt_wc), bs])
             hvd.allreduce_(debug_array_1, average=False, name='debug_array_1', priority=0)
             debug_array_1_np = debug_array_1.asnumpy()
-            logging.info('[Epoch {} Batch {}/{}], src_wc={}, tgt_wc={}, bs={}'.format(epoch_id, batch_id + 1, len(train_data_loader), debug_array_1_np[0], debug_array_1_np[1], debug_array_1_np[2]))
-            logging.info('[Epoch {} Batch {}/{}], ls={}'.format(epoch_id, batch_id + 1, len(train_data_loader), ls))
+            if rank==0:
+                logging.info('[Epoch {} Batch {}/{}], src_wc={}, tgt_wc={}, bs={}'.format(epoch_id, batch_id + 1, len(train_data_loader), debug_array_1_np[0], debug_array_1_np[1], debug_array_1_np[2]))
+            # logging.info('[Epoch {} Batch {}/{}], ls={}'.format(epoch_id, batch_id + 1, len(train_data_loader), ls))
 
             src_wc = src_wc.asscalar()
             tgt_wc = tgt_wc.asscalar()
