@@ -342,18 +342,19 @@ def train():
             step_loss += ls.asscalar()
 
             # debug
-            debug_array_1 = mx.nd.array([float(src_wc), float(tgt_wc), float(bs)])
-            hvd.allreduce_(debug_array_1, average=False, name='debug_array_1', priority=0)
-            debug_array_1_np = debug_array_1.asnumpy()
-            if rank==0:
-                logging.info('[Epoch {} Batch {}/{}], src_wc={}, tgt_wc={}, bs={}'.format(epoch_id, batch_id + 1, len(train_data_loader), 
-                                                                                                 debug_array_1_np[0], debug_array_1_np[1], debug_array_1_np[2]))
-            debug_array_2 = mx.nd.zeros((num_workers, ), dtype='float32')
-            debug_array_2[rank] = np.asscalar(ls.asscalar())
-            hvd.allreduce_(debug_array_2, average=False, name='debug_array_2', priority=0)
-            debug_array_2_np = debug_array_2.asnumpy()
-            if rank==0:
-                logging.info('[Epoch {} Batch {}/{}], ls={}'.format(epoch_id, batch_id + 1, len(train_data_loader), debug_array_2_np.tolist()))
+            logging.info('[Epoch {} Batch {}/{}], src_wc={}, tgt_wc={}, bs={}, ls={}'.format(epoch_id, batch_id + 1, len(train_data_loader), src_wc, tgt_wc, bs,ls.asscalar()))
+            # debug_array_1 = mx.nd.array([float(src_wc), float(tgt_wc), float(bs)])
+            # hvd.allreduce_(debug_array_1, average=False, name='debug_array_1', priority=0)
+            # debug_array_1_np = debug_array_1.asnumpy()
+            # if rank==0:
+            #     logging.info('[Epoch {} Batch {}/{}], src_wc={}, tgt_wc={}, bs={}'.format(epoch_id, batch_id + 1, len(train_data_loader), 
+            #                                                                                      debug_array_1_np[0], debug_array_1_np[1], debug_array_1_np[2]))
+            # debug_array_2 = mx.nd.zeros((num_workers, ), dtype='float32')
+            # debug_array_2[rank] = np.asscalar(ls.asscalar())
+            # hvd.allreduce_(debug_array_2, average=False, name='debug_array_2', priority=0)
+            # debug_array_2_np = debug_array_2.asnumpy()
+            # if rank==0:
+            #     logging.info('[Epoch {} Batch {}/{}], ls={}'.format(epoch_id, batch_id + 1, len(train_data_loader), debug_array_2_np.tolist()))
 
             if batch_id % grad_interval == grad_interval - 1 or\
                     batch_id == len(train_data_loader) - 1:
