@@ -47,7 +47,7 @@ import gluonnlp as nlp
 
 from gluonnlp.loss import MaskedSoftmaxCELoss, LabelSmoothing
 from gluonnlp.model.translation import NMTModel
-from gluonnlp.model.transformer import get_transformer_encoder_decoder
+from gluonnlp.model.transformer import get_transformer_encoder_decoder, ParallelTransformer
 # from gluonnlp.utils.parallel import Parallel
 from translation import BeamSearchTranslator
 
@@ -217,7 +217,7 @@ test_loss_function = MaskedSoftmaxCELoss()
 test_loss_function.hybridize(static_alloc=static_alloc)
 
 rescale_loss = 100
-# parallel_model = ParallelTransformer(model, label_smoothing, loss_function, rescale_loss)
+parallel_model = ParallelTransformer(model, label_smoothing, loss_function, rescale_loss)
 detokenizer = nlp.data.SacreMosesDetokenizer()
 
 
@@ -305,7 +305,7 @@ def train():
     average_start = (len(train_data_loader) // grad_interval) * (args.epochs - args.average_start)
     average_param_dict = None
     model.collect_params().zero_grad()
-    # parallel = Parallel(num_ctxs, parallel_model)
+    parallel = Parallel(1, parallel_model)
     for epoch_id in range(args.epochs):
         log_avg_loss = 0
         log_wc = 0
@@ -323,18 +323,16 @@ def train():
             src_wc, tgt_wc, bs = seqs[2].sum(), seqs[3].sum(), seqs[0].shape[0]
             seqs = [seq.as_in_context(ctx) for seq in seqs]
 
-            # Ls = []
-            # for seq in seqs:
-            #     parallel.put((seq, args.batch_size))
-            # Ls = [parallel.get() for _ in range(len(ctx))]
-            (src_seq, tgt_seq, src_valid_length, tgt_valid_length), batch_size = (seqs, args.batch_size)
-            with mx.autograd.record():
-                out, _ = model(src_seq, tgt_seq[:, :-1],
-                                    src_valid_length, tgt_valid_length - 1)
-                smoothed_label = label_smoothing(tgt_seq[:, 1:])
-                ls = loss_function(out, smoothed_label, tgt_valid_length - 1).sum()
-                ls = (ls * (tgt_seq.shape[1] - 1)) / batch_size / rescale_loss
-            ls.backward()
+            parallel.put((seq, args.batch_size))
+            ls = parallel.get()
+            # (src_seq, tgt_seq, src_valid_length, tgt_valid_length), batch_size = (seqs, args.batch_size)
+            # with mx.autograd.record():
+            #     out, _ = model(src_seq, tgt_seq[:, :-1],
+            #                         src_valid_length, tgt_valid_length - 1)
+            #     smoothed_label = label_smoothing(tgt_seq[:, 1:])
+            #     ls = loss_function(out, smoothed_label, tgt_valid_length - 1).sum()
+            #     ls = (ls * (tgt_seq.shape[1] - 1)) / batch_size / rescale_loss
+            # ls.backward()
 
             src_wc = src_wc.asscalar()
             tgt_wc = tgt_wc.asscalar()
@@ -342,18 +340,19 @@ def train():
             step_loss += ls.asscalar()
 
             # debug
-            debug_array_1 = mx.nd.array([float(src_wc), float(tgt_wc), float(bs)])
-            hvd.allreduce_(debug_array_1, average=False, name='debug_array_1', priority=0)
-            debug_array_1_np = debug_array_1.asnumpy()
-            if rank==0:
-                logging.info('[Epoch {} Batch {}/{}], src_wc={}, tgt_wc={}, bs={}'.format(epoch_id, batch_id + 1, len(train_data_loader), 
-                                                                                                 debug_array_1_np[0], debug_array_1_np[1], debug_array_1_np[2]))
-            debug_array_2 = mx.nd.zeros((num_workers, ), dtype='float32')
-            debug_array_2[rank] = float(ls.asscalar())
-            hvd.allreduce_(debug_array_2, average=False, name='debug_array_2', priority=0)
-            debug_array_2_np = debug_array_2.asnumpy()
-            if rank==0:
-                logging.info('[Epoch {} Batch {}/{}], ls={}'.format(epoch_id, batch_id + 1, len(train_data_loader), debug_array_2_np.tolist()))
+            logging.info('[Epoch {} Batch {}/{}], src_wc={}, tgt_wc={}, bs={}, ls={}'.format(epoch_id, batch_id + 1, len(train_data_loader), src_wc, tgt_wc, bs,ls.asscalar()))
+            # debug_array_1 = mx.nd.array([float(src_wc), float(tgt_wc), float(bs)])
+            # hvd.allreduce_(debug_array_1, average=False, name='debug_array_1', priority=0)
+            # debug_array_1_np = debug_array_1.asnumpy()
+            # if rank==0:
+            #     logging.info('[Epoch {} Batch {}/{}], src_wc={}, tgt_wc={}, bs={}'.format(epoch_id, batch_id + 1, len(train_data_loader), 
+            #                                                                                      debug_array_1_np[0], debug_array_1_np[1], debug_array_1_np[2]))
+            # debug_array_2 = mx.nd.zeros((num_workers, ), dtype='float32')
+            # debug_array_2[rank] = np.asscalar(ls.asscalar())
+            # hvd.allreduce_(debug_array_2, average=False, name='debug_array_2', priority=0)
+            # debug_array_2_np = debug_array_2.asnumpy()
+            # if rank==0:
+            #     logging.info('[Epoch {} Batch {}/{}], ls={}'.format(epoch_id, batch_id + 1, len(train_data_loader), debug_array_2_np.tolist()))
 
             if batch_id % grad_interval == grad_interval - 1 or\
                     batch_id == len(train_data_loader) - 1:
