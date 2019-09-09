@@ -346,7 +346,7 @@ def train():
             hvd.allreduce_(debug_array_1, average=False, name='debug_array_1', priority=0)
             debug_array_1_np = debug_array_1.asnumpy()
             if rank==0:
-                logging.info('[Epoch {} Batch {}/{}], src_wc={}, tgt_wc={}, bs={}, ls={}'.format(epoch_id, batch_id + 1, len(train_data_loader), 
+                logging.info('[Epoch {} Batch {}/{}], src_wc={}, tgt_wc={}, bs={}'.format(epoch_id, batch_id + 1, len(train_data_loader), 
                                                                                                  debug_array_1_np[0], debug_array_1_np[1], debug_array_1_np[2], debug_array_1_np[3]))
             debug_array_2 = mx.nd.zeros((num_workers,))
             debug_array_2[rank] = ls.asscalar()
