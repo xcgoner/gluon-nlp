@@ -337,7 +337,7 @@ def train():
             ls.backward()
 
             # debug
-            print('ls={.4f}'.format(ls))
+            logging.info('[Epoch {} Batch {}/{}], ls={}'.format(epoch_id, batch_id + 1, len(train_data_loader), ls))
 
             src_wc = src_wc.asscalar()
             tgt_wc = tgt_wc.asscalar()

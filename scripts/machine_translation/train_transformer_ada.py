@@ -314,7 +314,10 @@ def train():
             tgt_wc = tgt_wc.asscalar()
             loss_denom += tgt_wc - bs
             step_loss += sum([L.asscalar() for L in Ls])
-            print([L.asscalar() for L in Ls])
+
+            # debug
+            logging.info('[Epoch {} Batch {}/{}], ls={}'.format(epoch_id, batch_id + 1, len(train_data_loader), ls))
+
             if batch_id % grad_interval == grad_interval - 1 or\
                     batch_id == len(train_data_loader) - 1:
                 if average_param_dict is None:
