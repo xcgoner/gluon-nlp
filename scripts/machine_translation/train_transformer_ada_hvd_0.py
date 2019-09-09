@@ -323,7 +323,7 @@ def train():
             src_wc, tgt_wc, bs = seqs[2].sum(), seqs[3].sum(), seqs[0].shape[0]
             seqs = [seq.as_in_context(ctx) for seq in seqs]
 
-            parallel.put((seq, args.batch_size))
+            parallel.put((seqs, args.batch_size))
             ls = parallel.get()
             # (src_seq, tgt_seq, src_valid_length, tgt_valid_length), batch_size = (seqs, args.batch_size)
             # with mx.autograd.record():
