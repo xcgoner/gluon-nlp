@@ -30,11 +30,11 @@ Language Processing (NLP) research.
 News
 ====
 
-- GluonNLP will be featured in KDD 2019 Alaska! Check out our tutorial: `From Shallow to Deep Language Representations: Pre-training, Fine-tuning, and Beyond <https://www.kdd.org/kdd2019/hands-on-tutorials>`__.
 - Tutorial proposal for GluonNLP is accepted at `EMNLP 2019 <https://www.emnlp-ijcnlp2019.org>`__, Hong Kong.
 
 - GluonNLP was featured in:
 
+  - **KDD 2019 Alaska**! Check out our tutorial: `From Shallow to Deep Language Representations: Pre-training, Fine-tuning, and Beyond <http://kdd19.mxnet.io>`__.
   - **JSALT 2019 in Montreal, 2019-6-14**! Checkout **https://jsalt19.mxnet.io**.
   - **AWS re:invent 2018 in Las Vegas, 2018-11-28**! Checkout `details <https://www.portal.reinvent.awsevents.com/connect/sessionDetail.ww?SESSION_ID=88736>`_.
   - **PyData 2018 NYC, 2018-10-18**! Checkout the `awesome talk <https://pydata.org/nyc2018/schedule/presentation/76/>`__ by Sneha Jha.
@@ -92,7 +92,7 @@ How to Contribute
 
 GluonNLP community welcomes contributions from anyone!
 
-There are lots of opportunities for you to become our `contributors <https://github.com/dmlc/gluon-nlp/blob/master/contributor.rst>`__:
+There are lots of opportunities for you to become our `contributors <https://github.com/dmlc/gluon-nlp/graphs/contributors>`__:
 
 - Ask or answer questions on `GitHub issues <https://github.com/dmlc/gluon-nlp/issues>`__.
 - Propose ideas, or review proposed design ideas on `GitHub issues <https://github.com/dmlc/gluon-nlp/issues>`__.
@@ -191,8 +191,8 @@ English word embeddings:
     <class 'mxnet.ndarray.ndarray.NDArray'>
     >>> glove['baby'].shape
     (50,)
-    
-    
+
+
 Reference Paper
 ===============
 
