@@ -10,9 +10,8 @@ import mxnet as mx
 from horovod.mxnet.mpi_ops import allreduce_
 
 # logging
-level = logging.DEBUG if args.verbose else logging.INFO
+level = logging.INFO
 logging.getLogger().setLevel(level)
-logging.info(args)
 os.environ['MXNET_GPU_MEM_POOL_TYPE'] = 'Round'
 os.environ['MXNET_SAFE_ACCUMULATION'] = '1'
 
@@ -49,7 +48,6 @@ def test_local_reduction(ctx):
 
 if __name__ == '__main__':
     random_seed = random.randint(0, 1000)
-    nlp.utils.mkdir(args.ckpt_dir)
     ctx = mx.gpu(local_rank)
 
     test_local_reduction(ctx)
