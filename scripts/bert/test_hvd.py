@@ -71,6 +71,10 @@ def test_local_reduction(ctx):
     mx.nd.waitall()
     logging.info('local_reduction_array after 2nd cross-only allreduce: {}'.format(local_reduction_array.asnumpy()))
 
+    local_reduction_array[:] = float(rank)*2
+    mx.nd.waitall()
+    logging.info('local_reduction_array before global allreduce: {}'.format(local_reduction_array.asnumpy()))
+
     allreduce_(local_reduction_array, average=True,
                 name='local_reduction_array', priority=0, 
                 local_reduction = False)
