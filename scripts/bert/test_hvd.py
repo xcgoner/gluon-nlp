@@ -33,17 +33,50 @@ def test_local_reduction(ctx):
     # test local reduction
     local_reduction_array = mx.nd.array([float(rank), float(rank), float(rank)]).as_in_context(ctx)
     mx.nd.waitall()
-    logging.info('local_reduction_array before allreduce: {}'.format(local_reduction_array.asnumpy()))
+    logging.info('local_reduction_array before 1st local allreduce: {}'.format(local_reduction_array.asnumpy()))
+
     allreduce_(local_reduction_array, average=True,
                 name='local_reduction_array', priority=0, 
                 local_reduction = True)
     mx.nd.waitall()
-    logging.info('local_reduction_array after local allreduce: {}'.format(local_reduction_array.asnumpy()))
+    logging.info('local_reduction_array after 1st local allreduce: {}'.format(local_reduction_array.asnumpy()))
+
+    local_reduction_array[:] = float(rank)+1
+    mx.nd.waitall()
+    logging.info('local_reduction_array before 2nd local allreduce: {}'.format(local_reduction_array.asnumpy()))
+
+    allreduce_(local_reduction_array, average=True,
+                name='local_reduction_array', priority=0, 
+                local_reduction = True)
+    mx.nd.waitall()
+    logging.info('local_reduction_array after 2nd local allreduce: {}'.format(local_reduction_array.asnumpy()))
+
+    local_reduction_array[:] = float(rank)+2
+    mx.nd.waitall()
+    logging.info('local_reduction_array before 1st cross-only allreduce: {}'.format(local_reduction_array.asnumpy()))
+
+    allreduce_(local_reduction_array, average=True,
+                name='local_reduction_array', priority=0, 
+                cross_only = True)
+    mx.nd.waitall()
+    logging.info('local_reduction_array after 1st cross-only allreduce: {}'.format(local_reduction_array.asnumpy()))
+
+    local_reduction_array[:] = float(rank)+3
+    mx.nd.waitall()
+    logging.info('local_reduction_array before 2nd cross-only allreduce: {}'.format(local_reduction_array.asnumpy()))
+
+    allreduce_(local_reduction_array, average=True,
+                name='local_reduction_array', priority=0, 
+                cross_only = True)
+    mx.nd.waitall()
+    logging.info('local_reduction_array after 2nd cross-only allreduce: {}'.format(local_reduction_array.asnumpy()))
+
     allreduce_(local_reduction_array, average=True,
                 name='local_reduction_array', priority=0, 
                 local_reduction = False)
     mx.nd.waitall()
     logging.info('local_reduction_array after global allreduce: {}'.format(local_reduction_array.asnumpy()))
+
     return
 
 if __name__ == '__main__':
