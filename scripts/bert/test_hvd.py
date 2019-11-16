@@ -51,7 +51,7 @@ def test_local_reduction(ctx):
     mx.nd.waitall()
     logging.info('local_reduction_array after 2nd local allreduce: {}'.format(local_reduction_array.asnumpy()))
 
-    local_reduction_array[:] = float((rank+1) % hvd.local_size())
+    local_reduction_array[:] = float(rank // hvd.local_size())
     mx.nd.waitall()
     logging.info('local_reduction_array before 1st cross-only allreduce: {}'.format(local_reduction_array.asnumpy()))
 
@@ -61,7 +61,7 @@ def test_local_reduction(ctx):
     mx.nd.waitall()
     logging.info('local_reduction_array after 1st cross-only allreduce: {}'.format(local_reduction_array.asnumpy()))
 
-    local_reduction_array[:] = float((rank+1) % hvd.local_size()) + 1
+    local_reduction_array[:] = float(rank // hvd.local_size()) + 1
     mx.nd.waitall()
     logging.info('local_reduction_array before 2nd cross-only allreduce: {}'.format(local_reduction_array.asnumpy()))
 
