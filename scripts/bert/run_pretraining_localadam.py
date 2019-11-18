@@ -121,7 +121,7 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx):
 
     """Training function."""
     param_dict = model.collect_params()
-    hvd.broadcast_parameters(, root_rank=0)
+    hvd.broadcast_parameters(param_dict, root_rank=0)
 
     mlm_metric = nlp.metric.MaskedAccuracy()
     nsp_metric = nlp.metric.MaskedAccuracy()
