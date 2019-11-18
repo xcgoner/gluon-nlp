@@ -29,15 +29,15 @@ import warnings
 import math
 
 import horovod.mxnet as hvd
-from horovod.mxnet.mpi_ops import allreduce, allreduce_
+from horovod.mxnet.mpi_ops import allreduce_
 
-class FP16DistributedLocalSGDTrainerV2(hvd.DistributedTrainer):
+class FP16DistributedLocalAdamTrainer(hvd.DistributedTrainer):
     def __init__(self, params, optimizer, optimizer_params=None, 
                 local_sgd=1):
         
         # important: only works for bert_adam with fp16 trainer
 
-        super(FP16DistributedLocalSGDTrainerV2, self).__init__(
+        super(FP16DistributedLocalAdamTrainer, self).__init__(
             params, optimizer, optimizer_params=optimizer_params)
 
         # _scale is used to check and set rescale_grad for optimizer in Trainer.step()
@@ -67,7 +67,7 @@ class FP16DistributedLocalSGDTrainerV2(hvd.DistributedTrainer):
                                   local_reduction = True)
 
     def _update(self, ignore_stale_grad=False):
-        super(FP16DistributedLocalSGDTrainerV2, self)._update(ignore_stale_grad=ignore_stale_grad)
+        super(FP16DistributedLocalAdamTrainer, self)._update(ignore_stale_grad=ignore_stale_grad)
         if self._local_sgd > 1:
             # local sgd
             self._local_sgd_counter += 1
@@ -83,7 +83,8 @@ class FP16DistributedLocalSGDTrainerV2(hvd.DistributedTrainer):
             if param.grad_req != 'null':
                 allreduce_(param.list_data()[0], average=True,
                                 name=str(i), priority=-i, 
-                                  local_reduction = False)
+                                local_reduction = False, 
+                                cross_only = True)
 
     def allreduce_states(self):
         """For each parameter, reduce the gradients from different contexts.
@@ -111,7 +112,7 @@ class FP16DistributedLocalSGDTrainerV2(hvd.DistributedTrainer):
                 allreduce_(self._updaters[0].states[i][1], average=True,
                                 name=str(i), priority=-i, 
                                 local_reduction = False, 
-                                cross_only = False)
+                                cross_only = True)
                 # copy fp32 weight to fp16 weight, assume using hvd with single GPU per process
                 self._updaters[0].states[i][1].copyto(param.list_data()[0])
         # sync mean and var
@@ -122,5 +123,5 @@ class FP16DistributedLocalSGDTrainerV2(hvd.DistributedTrainer):
                     allreduce_(self._updaters[0].states[i][0][j], average=True,
                                 name=str(idx), priority=-i-len(self._params)*2, 
                                 local_reduction = False, 
-                                cross_only = False)
+                                cross_only = True)
 

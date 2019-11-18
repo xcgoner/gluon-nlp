@@ -47,6 +47,8 @@ from pretraining_utils import split_and_load, log, evaluate, forward, get_argpar
 from pretraining_utils import save_parameters, save_states
 from pretraining_utils import get_pretrain_data_text, generate_dev_set
 
+from horovod.mxnet.mpi_ops import allreduce, allreduce_
+
 # parser
 parser = get_argparser()
 parser.add_argument('--raw', action='store_true',
@@ -112,12 +114,14 @@ if not args.use_avg_len and hvd.size() > 1:
 logging.info('Using effective batch size = batch_size * accumulate * np = %d',
              args.batch_size * args.accumulate * num_workers)
 
-from local_sgd_hvd import FP16DistributedLocalSGDTrainer
+from local_adam import FP16DistributedLocalAdamTrainer
 
 
 def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx):
+
     """Training function."""
-    hvd.broadcast_parameters(model.collect_params(), root_rank=0)
+    param_dict = model.collect_params()
+    hvd.broadcast_parameters(, root_rank=0)
 
     mlm_metric = nlp.metric.MaskedAccuracy()
     nsp_metric = nlp.metric.MaskedAccuracy()
@@ -142,7 +146,7 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx):
         loss_scale_param = None
     
 
-    trainer = FP16DistributedLocalSGDTrainer(model.collect_params(), args.optimizer, optim_params, local_sgd=local_sgd)
+    trainer = FP16DistributedLocalAdamTrainer(param_dict, args.optimizer, optim_params, local_sgd=local_sgd)
     fp16_trainer = FP16Trainer(trainer, dynamic_loss_scale=dynamic_loss_scale,
                                loss_scaler_params=loss_scale_param)
 
@@ -155,8 +159,7 @@ def train(data_train, data_eval, model, nsp_loss, mlm_loss, vocab_size, ctx):
     num_train_steps = args.num_steps
     warmup_ratio = args.warmup_ratio
     num_warmup_steps = int(num_train_steps * warmup_ratio)
-    params = [p for p in model.collect_params().values() if p.grad_req != 'null']
-    param_dict = model.collect_params()
+    params = [p for p in param_dict.values() if p.grad_req != 'null']
 
     # Do not apply weight decay on LayerNorm and bias terms
     for _, v in model.collect_params('.*beta|.*gamma|.*bias').items():
