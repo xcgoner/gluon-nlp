@@ -59,27 +59,27 @@ mx.random.seed(10000)
 
 nlp.utils.check_version('0.9.0')
 
-try:
-    import horovod.mxnet as hvd
-except ImportError:
-    logging.info('horovod must be installed.')
-    exit()
+# try:
+#     import horovod.mxnet as hvd
+# except ImportError:
+#     logging.info('horovod must be installed.')
+#     exit()
 
-def init_comm():
-    """Init communication for horovod"""
-    hvd.init()
-    num_workers = hvd.size()
-    rank = hvd.rank()
-    local_rank = hvd.local_rank()
-    is_master_node = rank == local_rank
-    ctxs = [mx.cpu()]
-    return num_workers, rank, local_rank, is_master_node, ctxs
+# def init_comm():
+#     """Init communication for horovod"""
+#     hvd.init()
+#     num_workers = hvd.size()
+#     rank = hvd.rank()
+#     local_rank = hvd.local_rank()
+#     is_master_node = rank == local_rank
+#     ctxs = [mx.cpu()]
+#     return num_workers, rank, local_rank, is_master_node, ctxs
 
-num_workers, rank, local_rank, is_master_node, ctxs = init_comm()
+# num_workers, rank, local_rank, is_master_node, ctxs = init_comm()
 
-a = mx.nd.array([rank])
+a = mx.nd.array([1])
 print(a)
-hvd.allreduce_(a, name='a', average=True)
+# hvd.allreduce_(a, name='a', average=True)
 # a_np = np.asscalar(a.asnumpy())
 # print(a_np)
 
