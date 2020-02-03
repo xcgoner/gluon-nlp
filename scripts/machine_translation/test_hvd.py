@@ -80,6 +80,6 @@ num_workers, rank, local_rank, is_master_node, ctxs = init_comm()
 a = mx.nd.array([rank])
 print(a)
 hvd.allreduce_(a, name='a', average=True)
-a_np = np.asscalar(a.asnumpy())
-print(a_np)
+# a_np = np.asscalar(a.asnumpy())
+# print(a_np)
 
