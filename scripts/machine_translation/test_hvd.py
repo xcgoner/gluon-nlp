@@ -83,3 +83,5 @@ hvd.allreduce_(a, name='a', average=True)
 # a_np = np.asscalar(a.asnumpy())
 # print(a_np)
 
+mx.nd.waitall()
+
