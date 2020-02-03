@@ -154,10 +154,10 @@ def init_comm():
     ctxs = [mx.gpu(local_rank)] if args.gpu else [mx.cpu()]
     return num_workers, rank, local_rank, is_master_node, ctxs
 
+num_workers, rank, local_rank, is_master_node, ctxs = init_comm()
+
 if is_master_node:
     logging.info(args)
-
-num_workers, rank, local_rank, is_master_node, ctxs = init_comm()
 
 data_train, data_val, data_test, val_tgt_sentences, test_tgt_sentences, src_vocab, tgt_vocab \
     = dataprocessor.load_translation_data(dataset=args.dataset, bleu=args.bleu, args=args)
