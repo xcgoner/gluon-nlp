@@ -281,7 +281,7 @@ def evaluate(data_loader, context=ctx[0]):
 
 def train():
     """Training function."""
-    hvd.broadcast_parameters(param_dict, root_rank=0)
+    hvd.broadcast_parameters(model.collect_params(), root_rank=0)
     trainer = hvd.DistributedTrainer(model.collect_params(), args.optimizer,
                             {'learning_rate': args.lr, 'beta2': 0.98, 'epsilon': 1e-9})
 
