@@ -154,7 +154,8 @@ def init_comm():
     ctxs = [mx.gpu(local_rank)] if args.gpu else [mx.cpu()]
     return num_workers, rank, local_rank, is_master_node, ctxs
 
-num_workers, rank, local_rank, is_master_node, ctxs = init_comm()
+num_workers, rank, local_rank, is_master_node, ctx = init_comm()
+num_ctxs = len(ctx)
 
 if is_master_node:
     logging.info(args)
@@ -170,10 +171,6 @@ data_val = gluon.data.SimpleDataset([(ele[0], ele[1], len(ele[0]), len(ele[1]), 
                                      for i, ele in enumerate(data_val)])
 data_test = gluon.data.SimpleDataset([(ele[0], ele[1], len(ele[0]), len(ele[1]), i)
                                       for i, ele in enumerate(data_test)])
-
-ctx = [mx.cpu()] if args.gpus is None or args.gpus == '' else \
-    [mx.gpu(int(x)) for x in args.gpus.split(',')]
-num_ctxs = len(ctx)
 
 data_train_lengths, data_val_lengths, data_test_lengths = [dataprocessor.get_data_lengths(x)
                                                            for x in
