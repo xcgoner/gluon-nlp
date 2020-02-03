@@ -79,9 +79,9 @@ nlp.utils.check_version('0.9.0')
 
 a = mx.nd.array([1])
 print(a)
-# hvd.allreduce_(a, name='a', average=True)
-# a_np = np.asscalar(a.asnumpy())
-# print(a_np)
+hvd.allreduce_(a, name='a', average=True)
+a_np = np.asscalar(a.asnumpy())
+print(a_np)
 
 mx.nd.waitall()
 

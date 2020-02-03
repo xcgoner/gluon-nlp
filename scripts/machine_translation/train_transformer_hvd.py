@@ -137,15 +137,15 @@ parser.add_argument('--gpu', action='store_true',
                     help='turn on to use gpu')
 args = parser.parse_args()
 logging_config(args.save_dir)
-logging.info(args)
+
+try:
+    import horovod.mxnet as hvd
+except ImportError:
+    logging.info('horovod must be installed.')
+    exit()
 
 def init_comm():
     """Init communication for horovod"""
-    try:
-        import horovod.mxnet as hvd
-    except ImportError:
-        logging.info('horovod must be installed.')
-        exit()
     hvd.init()
     num_workers = hvd.size()
     rank = hvd.rank()
@@ -153,6 +153,9 @@ def init_comm():
     is_master_node = rank == local_rank
     ctxs = [mx.gpu(local_rank)] if args.gpu else [mx.cpu()]
     return num_workers, rank, local_rank, is_master_node, ctxs
+
+if is_master_node:
+    logging.info(args)
 
 num_workers, rank, local_rank, is_master_node, ctxs = init_comm()
 
@@ -205,13 +208,14 @@ model = NMTModel(src_vocab=src_vocab, tgt_vocab=tgt_vocab, encoder=encoder, deco
 model.initialize(init=mx.init.Xavier(magnitude=args.magnitude), ctx=ctx)
 static_alloc = True
 model.hybridize(static_alloc=static_alloc)
-logging.info(model)
+if is_master_node:
+    logging.info(model)
 
 translator = BeamSearchTranslator(model=model, beam_size=args.beam_size,
                                   scorer=nlp.model.BeamSearchScorer(alpha=args.lp_alpha,
                                                                     K=args.lp_k),
                                   max_length=200)
-logging.info('Use beam_size={}, alpha={}, K={}'.format(args.beam_size, args.lp_alpha, args.lp_k))
+# logging.info('Use beam_size={}, alpha={}, K={}'.format(args.beam_size, args.lp_alpha, args.lp_k))
 
 label_smoothing = LabelSmoothing(epsilon=args.epsilon, units=len(tgt_vocab))
 label_smoothing.hybridize(static_alloc=static_alloc)
@@ -333,10 +337,13 @@ def train():
             tgt_wc = tgt_wc.asscalar()
             loss_denom += tgt_wc - bs
 
-            # sync loss_denom
-            loss_denom_nd = mx.nd.array([loss_denom])
-            hvd.allreduce_(loss_denom_nd, name='loss_denom', average=True)
-            loss_denom = np.asscalar(loss_denom_nd.asnumpy())
+            # sync loss_denom, src_wc, tgt_wc
+            allreduce_nd = mx.nd.array([loss_denom, src_wc, tgt_wc])
+            hvd.allreduce_(allreduce_nd, name='allreduce_nd', average=True)
+            allreduce_np = allreduce_nd.asnumpy()
+            loss_denom = np.asscalar(allreduce_np[0])
+            src_wc = np.asscalar(allreduce_np[1])
+            tgt_wc = np.asscalar(allreduce_np[2])
 
             if batch_id % grad_interval == grad_interval - 1 or\
                     batch_id == len(train_data_loader) - 1:
@@ -365,12 +372,13 @@ def train():
             log_wc += src_wc + tgt_wc
             if (batch_id + 1) % (args.log_interval * grad_interval) == 0:
                 wps = log_wc / (time.time() - log_start_time)
-                logging.info('[Epoch {} Batch {}/{}] loss={:.4f}, ppl={:.4f}, '
-                             'throughput={:.2f}K wps, wc={:.2f}K'
-                             .format(epoch_id, batch_id + 1, len(train_data_loader),
-                                     log_avg_loss / args.log_interval,
-                                     np.exp(log_avg_loss / args.log_interval),
-                                     wps / 1000, log_wc / 1000))
+                if is_master_node:
+                    logging.info('[Epoch {} Batch {}/{}] loss={:.4f}, ppl={:.4f}, '
+                                'throughput={:.2f}K wps, wc={:.2f}K'
+                                .format(epoch_id, batch_id + 1, len(train_data_loader),
+                                        log_avg_loss / args.log_interval,
+                                        np.exp(log_avg_loss / args.log_interval),
+                                        wps / 1000, log_wc / 1000))
                 log_start_time = time.time()
                 log_avg_loss = 0
                 log_wc = 0
@@ -380,63 +388,70 @@ def train():
                                                     tokenized=tokenized, tokenizer=args.bleu,
                                                     split_compound_word=split_compound_word,
                                                     bpe=bpe)
-        logging.info('[Epoch {}] valid Loss={:.4f}, valid ppl={:.4f}, valid bleu={:.2f}'
-                     .format(epoch_id, valid_loss, np.exp(valid_loss), valid_bleu_score * 100))
+        if is_master_node:
+            logging.info('[Epoch {}] valid Loss={:.4f}, valid ppl={:.4f}, valid bleu={:.2f}'
+                        .format(epoch_id, valid_loss, np.exp(valid_loss), valid_bleu_score * 100))
         test_loss, test_translation_out = evaluate(test_data_loader, ctx[0])
         test_bleu_score, _, _, _, _ = compute_bleu([test_tgt_sentences], test_translation_out,
                                                    tokenized=tokenized, tokenizer=args.bleu,
                                                    split_compound_word=split_compound_word,
                                                    bpe=bpe)
-        logging.info('[Epoch {}] test Loss={:.4f}, test ppl={:.4f}, test bleu={:.2f}'
-                     .format(epoch_id, test_loss, np.exp(test_loss), test_bleu_score * 100))
-        dataprocessor.write_sentences(valid_translation_out,
-                                      os.path.join(args.save_dir,
-                                                   'epoch{:d}_valid_out.txt').format(epoch_id))
-        dataprocessor.write_sentences(test_translation_out,
-                                      os.path.join(args.save_dir,
-                                                   'epoch{:d}_test_out.txt').format(epoch_id))
+        if is_master_node:
+            logging.info('[Epoch {}] test Loss={:.4f}, test ppl={:.4f}, test bleu={:.2f}'
+                        .format(epoch_id, test_loss, np.exp(test_loss), test_bleu_score * 100))
+            dataprocessor.write_sentences(valid_translation_out,
+                                        os.path.join(args.save_dir,
+                                                    'epoch{:d}_valid_out.txt').format(epoch_id))
+            dataprocessor.write_sentences(test_translation_out,
+                                        os.path.join(args.save_dir,
+                                                    'epoch{:d}_test_out.txt').format(epoch_id))
         if valid_bleu_score > best_valid_bleu:
             best_valid_bleu = valid_bleu_score
             save_path = os.path.join(args.save_dir, 'valid_best.params')
-            logging.info('Save best parameters to {}'.format(save_path))
+            if is_master_node:
+                logging.info('Save best parameters to {}'.format(save_path))
+                model.save_parameters(save_path)
+        if is_master_node:
+            save_path = os.path.join(args.save_dir, 'epoch{:d}.params'.format(epoch_id))
             model.save_parameters(save_path)
-        save_path = os.path.join(args.save_dir, 'epoch{:d}.params'.format(epoch_id))
-        model.save_parameters(save_path)
-    save_path = os.path.join(args.save_dir, 'average.params')
-    mx.nd.save(save_path, average_param_dict)
-    if args.average_checkpoint:
-        for j in range(args.num_averages):
-            params = mx.nd.load(os.path.join(args.save_dir,
-                                             'epoch{:d}.params'.format(args.epochs - j - 1)))
-            alpha = 1. / (j + 1)
-            for k, v in model._collect_params_with_prefix().items():
-                for c in ctx:
-                    v.data(c)[:] += alpha * (params[k].as_in_context(c) - v.data(c))
-        save_path = os.path.join(args.save_dir,
-                                 'average_checkpoint_{}.params'.format(args.num_averages))
-        model.save_parameters(save_path)
-    elif args.average_start > 0:
-        for k, v in model.collect_params().items():
-            v.set_data(average_param_dict[k])
+    if is_master_node:
         save_path = os.path.join(args.save_dir, 'average.params')
-        model.save_parameters(save_path)
-    else:
-        model.load_parameters(os.path.join(args.save_dir, 'valid_best.params'), ctx)
+        mx.nd.save(save_path, average_param_dict)
+        if args.average_checkpoint:
+            for j in range(args.num_averages):
+                params = mx.nd.load(os.path.join(args.save_dir,
+                                                'epoch{:d}.params'.format(args.epochs - j - 1)))
+                alpha = 1. / (j + 1)
+                for k, v in model._collect_params_with_prefix().items():
+                    for c in ctx:
+                        v.data(c)[:] += alpha * (params[k].as_in_context(c) - v.data(c))
+            save_path = os.path.join(args.save_dir,
+                                    'average_checkpoint_{}.params'.format(args.num_averages))
+            model.save_parameters(save_path)
+        elif args.average_start > 0:
+            for k, v in model.collect_params().items():
+                v.set_data(average_param_dict[k])
+            save_path = os.path.join(args.save_dir, 'average.params')
+            model.save_parameters(save_path)
+        else:
+            model.load_parameters(os.path.join(args.save_dir, 'valid_best.params'), ctx)
     valid_loss, valid_translation_out = evaluate(val_data_loader, ctx[0])
     valid_bleu_score, _, _, _, _ = compute_bleu([val_tgt_sentences], valid_translation_out,
                                                 tokenized=tokenized, tokenizer=args.bleu, bpe=bpe,
                                                 split_compound_word=split_compound_word)
-    logging.info('Best model valid Loss={:.4f}, valid ppl={:.4f}, valid bleu={:.2f}'
-                 .format(valid_loss, np.exp(valid_loss), valid_bleu_score * 100))
+    if is_master_node:
+        logging.info('Best model valid Loss={:.4f}, valid ppl={:.4f}, valid bleu={:.2f}'
+                    .format(valid_loss, np.exp(valid_loss), valid_bleu_score * 100))
     test_loss, test_translation_out = evaluate(test_data_loader, ctx[0])
     test_bleu_score, _, _, _, _ = compute_bleu([test_tgt_sentences], test_translation_out,
                                                tokenized=tokenized, tokenizer=args.bleu, bpe=bpe,
                                                split_compound_word=split_compound_word)
-    logging.info('Best model test Loss={:.4f}, test ppl={:.4f}, test bleu={:.2f}'
-                 .format(test_loss, np.exp(test_loss), test_bleu_score * 100))
-    dataprocessor.write_sentences(valid_translation_out,
-                                  os.path.join(args.save_dir, 'best_valid_out.txt'))
-    dataprocessor.write_sentences(test_translation_out,
+    if is_master_node:
+        logging.info('Best model test Loss={:.4f}, test ppl={:.4f}, test bleu={:.2f}'
+                    .format(test_loss, np.exp(test_loss), test_bleu_score * 100))
+        dataprocessor.write_sentences(valid_translation_out,
+                                    os.path.join(args.save_dir, 'best_valid_out.txt'))
+        dataprocessor.write_sentences(test_translation_out,
                                   os.path.join(args.save_dir, 'best_test_out.txt'))
 
 
