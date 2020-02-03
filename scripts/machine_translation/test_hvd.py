@@ -71,7 +71,7 @@ def init_comm():
     rank = hvd.rank()
     local_rank = hvd.local_rank()
     is_master_node = rank == local_rank
-    ctxs = [mx.gpu(local_rank)] if args.gpu else [mx.cpu()]
+    ctxs = [mx.cpu()]
     return num_workers, rank, local_rank, is_master_node, ctxs
 
 num_workers, rank, local_rank, is_master_node, ctxs = init_comm()
