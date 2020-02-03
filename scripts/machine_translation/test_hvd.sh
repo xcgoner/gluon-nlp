@@ -23,4 +23,4 @@ watchfile=/homes/cx2/src/localadam/uai2020/results/text_hvd.txt
 
 cat $PBS_NODEFILE | uniq > $PBS_O_WORKDIR/hostfile
 cd /homes/cx2/src/localadam/uai2020/gluon-nlp/scripts/machine_translation
-mpirun -np 10 -machinefile $PBS_O_WORKDIR/hostfile python test_hvd.py 2>&1 | tee -a $watchfile
+mpirun -np 5 -machinefile $PBS_O_WORKDIR/hostfile python test_hvd.py 2>&1 | tee -a $watchfile
