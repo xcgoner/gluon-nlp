@@ -59,13 +59,14 @@ mx.random.seed(10000)
 
 nlp.utils.check_version('0.9.0')
 
+try:
+    import horovod.mxnet as hvd
+except ImportError:
+    logging.info('horovod must be installed.')
+    exit()
+
 def init_comm():
     """Init communication for horovod"""
-    try:
-        import horovod.mxnet as hvd
-    except ImportError:
-        logging.info('horovod must be installed.')
-        exit()
     hvd.init()
     num_workers = hvd.size()
     rank = hvd.rank()
@@ -78,7 +79,7 @@ num_workers, rank, local_rank, is_master_node, ctxs = init_comm()
 
 a = mx.nd.array([rank])
 print(a)
-hvd.allreduce_(a, name='loss_denom', average=True)
+hvd.allreduce_(a, name='a', average=True)
 a_np = np.asscalar(a.asnumpy())
 print(a_np)
 
