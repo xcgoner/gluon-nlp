@@ -77,7 +77,8 @@ def init_comm():
 num_workers, rank, local_rank, is_master_node, ctxs = init_comm()
 
 a = mx.nd.array([rank])
-hvd.allreduce_(a, name='loss_denom', average=True)
-a_np = np.asscalar(loss_denom_nd.asnumpy())
 print(a)
+hvd.allreduce_(a, name='loss_denom', average=True)
+a_np = np.asscalar(a.asnumpy())
+print(a_np)
 
