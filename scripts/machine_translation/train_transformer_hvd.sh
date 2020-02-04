@@ -13,13 +13,15 @@ export I_MPI_FABRICS=shm:tmi
 export I_MPI_TMI_PROVIDER=psm2
 export HFI_NO_CPUAFFINITY=1
 export I_MPI_FALLBACK=0
-export OMP_NUM_THREADS=28
+export OMP_NUM_THREADS=66
 
 ### OPA FABRIC ###
 export I_MPI_HYDRA_BOOTSTRAP=rsh
 export I_MPI_HYDRA_BOOTSTRAP_EXEC=pbs_tmrsh
 
-export KMP_AFFINITY=granularity=fine,compact,1,0;
+export KMP_AFFINITY=granularity=fine,compact,1,0
+
+export MXNET_SUBGRAPH_BACKEND=MKLDNN
 
 
 watchfile=/homes/cx2/src/localadam/uai2020/results/train_transformer_hvd.txt
