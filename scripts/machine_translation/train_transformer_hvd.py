@@ -336,7 +336,7 @@ def train():
 
             # sync loss_denom, src_wc, tgt_wc
             allreduce_nd = mx.nd.array([loss_denom, src_wc, tgt_wc])
-            hvd.allreduce_(allreduce_nd, name='allreduce_nd', average=True)
+            hvd.allreduce_(allreduce_nd, name='allreduce_nd', average=False)
             allreduce_np = allreduce_nd.asnumpy()
             loss_denom = np.asscalar(allreduce_np[0])
             src_wc = np.asscalar(allreduce_np[1])
@@ -358,7 +358,7 @@ def train():
 
             # sync step_loss
             step_loss_nd = mx.nd.array([step_loss])
-            hvd.allreduce_(step_loss_nd, name='step_loss', average=True)
+            hvd.allreduce_(step_loss_nd, name='step_loss', average=False)
             step_loss = np.asscalar(step_loss_nd.asnumpy())
 
             if batch_id % grad_interval == grad_interval - 1 or\
