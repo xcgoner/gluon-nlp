@@ -32,4 +32,4 @@ mpirun -np 8 -machinefile $PBS_O_WORKDIR/hostfile python train_transformer_hvd.p
                        --src_lang en --tgt_lang de --batch_size 10800 \
                        --optimizer adam --num_accumulated 4 --lr 2.0 --warmup_steps 4000 \
                        --save_dir transformer_en_de_u512 --epochs 30 --scaled \
-                       --average_start 5 --num_buckets 20 --bucket_scheme exp --bleu 13a --log_interval 1 2>&1 | tee -a $watchfile
+                       --average_start 5 --num_buckets 20 --bucket_scheme exp --bleu 13a --log_interval 10 2>&1 | tee -a $watchfile
