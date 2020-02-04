@@ -315,6 +315,7 @@ def train():
         loss_denom = 0
         step_loss = 0
         log_start_time = time.time()
+        print(len(train_data_loader))
         for batch_id, seqs \
                 in enumerate(train_data_loader):
             if batch_id % grad_interval == 0:
