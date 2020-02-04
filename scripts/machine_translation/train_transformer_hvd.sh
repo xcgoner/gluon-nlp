@@ -1,10 +1,11 @@
 #!/bin/bash
 #PBS -l select=8:ncpus=112 -lplace=excl
 
+source activate mxnet_hvd
 source /homes/cx2/src/mxnet_hvd/MLSL/_install/intel64/bin/mlslvars.sh thread
 source /opt/intel/compilers_and_libraries_2017/linux/mpi/bin64/mpivars.sh release_mt
-source activate mxnet_mkl_latest
 
+export MLSL_MPI_VERSION_CHECK=0
 
 ### OPA FABRIC ###
 export I_MPI_FABRICS=ofi

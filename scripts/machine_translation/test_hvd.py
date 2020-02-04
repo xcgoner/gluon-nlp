@@ -44,14 +44,6 @@ import mxnet as mx
 from mxnet import gluon
 
 import gluonnlp as nlp
-from gluonnlp.loss import LabelSmoothing, MaskedSoftmaxCELoss
-from gluonnlp.model.transformer import ParallelTransformer, get_transformer_encoder_decoder
-from gluonnlp.model.translation import NMTModel
-from gluonnlp.utils.parallel import Parallel
-import dataprocessor
-from bleu import _bpe_to_words, compute_bleu
-from translation import BeamSearchTranslator
-from utils import logging_config
 
 np.random.seed(100)
 random.seed(100)
@@ -59,25 +51,28 @@ mx.random.seed(10000)
 
 nlp.utils.check_version('0.9.0')
 
-# try:
-#     import horovod.mxnet as hvd
-# except ImportError:
-#     logging.info('horovod must be installed.')
-#     exit()
+print('start')
 
-# def init_comm():
-#     """Init communication for horovod"""
-#     hvd.init()
-#     num_workers = hvd.size()
-#     rank = hvd.rank()
-#     local_rank = hvd.local_rank()
-#     is_master_node = rank == local_rank
-#     ctxs = [mx.cpu()]
-#     return num_workers, rank, local_rank, is_master_node, ctxs
+try:
+    import horovod.mxnet as hvd
+except ImportError:
+    logging.info('horovod must be installed.')
+    exit()
 
-# num_workers, rank, local_rank, is_master_node, ctxs = init_comm()
 
-a = mx.nd.array([1])
+def init_comm():
+    """Init communication for horovod"""
+    hvd.init()
+    num_workers = hvd.size()
+    rank = hvd.rank()
+    local_rank = hvd.local_rank()
+    is_master_node = rank == local_rank
+    ctxs = [mx.cpu()]
+    return num_workers, rank, local_rank, is_master_node, ctxs
+
+num_workers, rank, local_rank, is_master_node, ctxs = init_comm()
+
+a = mx.nd.array([1.0*rank])
 print(a)
 hvd.allreduce_(a, name='a', average=True)
 a_np = np.asscalar(a.asnumpy())
