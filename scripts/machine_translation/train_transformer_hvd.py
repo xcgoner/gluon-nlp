@@ -55,6 +55,10 @@ from utils import logging_config
 from bleu import _bpe_to_words, compute_bleu
 import dataprocessor
 
+# to sync dataloader
+from mpi4py import MPI
+mpi_comm = MPI.COMM_WORLD
+
 np.random.seed(100)
 random.seed(100)
 mx.random.seed(10000)
@@ -174,10 +178,6 @@ data_train_lengths, data_val_lengths, data_test_lengths = [dataprocessor.get_dat
                                                            for x in
                                                            [data_train, data_val, data_test]]
 
-# split data
-shard_len = len(data_train) // num_workers
-data_train = data_train.shard(num_workers, rank).take(shard_len)
-
 if args.src_max_len <= 0 or args.tgt_max_len <= 0:
     max_len = np.max(
         [np.max(data_train_lengths, axis=0), np.max(data_val_lengths, axis=0),
@@ -191,6 +191,12 @@ if args.tgt_max_len > 0:
     tgt_max_len = args.tgt_max_len
 else:
     tgt_max_len = max_len[1]
+
+# split data
+shard_len = len(data_train) // num_workers
+data_train = data_train.shard(num_workers, rank)
+# .take(shard_len)
+
 encoder, decoder = get_transformer_encoder_decoder(units=args.num_units,
                                                    hidden_size=args.hidden_size,
                                                    dropout=args.dropout,
@@ -289,6 +295,11 @@ def train():
         = dataprocessor.make_dataloader(data_train, data_val, data_test, args,
                                         use_average_length=True, num_shards=len(ctx))
 
+    batch_num = len(train_data_loader)
+    batch_num = comm.allreduce(batch_num, op=MPI.MIN)
+    if is_master_node:
+        logging.info('batch_num={}'.format(batch_num))
+
     if args.bleu == 'tweaked':
         bpe = bool(args.dataset != 'IWSLT2015' and args.dataset != 'TOY')
         split_compound_word = bpe
@@ -305,7 +316,7 @@ def train():
     warmup_steps = args.warmup_steps
     grad_interval = args.num_accumulated
     model.collect_params().setattr('grad_req', 'add')
-    average_start = (len(train_data_loader) // grad_interval) * (args.epochs - args.average_start)
+    average_start = (batch_num // grad_interval) * (args.epochs - args.average_start)
     average_param_dict = None
     model.collect_params().zero_grad()
     parallel = Parallel(num_ctxs, parallel_model)
@@ -315,9 +326,10 @@ def train():
         loss_denom = 0
         step_loss = 0
         log_start_time = time.time()
-        print(len(train_data_loader))
         for batch_id, seqs \
                 in enumerate(train_data_loader):
+            if batch_id == batch_num:
+                break
             if batch_id % grad_interval == 0:
                 step_num += 1
                 new_lr = args.lr / math.sqrt(args.num_units) \
@@ -344,7 +356,7 @@ def train():
             tgt_wc = np.asscalar(allreduce_np[2])
 
             if batch_id % grad_interval == grad_interval - 1 or\
-                    batch_id == len(train_data_loader) - 1:
+                    batch_id == batch_num - 1:
                 if average_param_dict is None:
                     average_param_dict = {k: v.data(ctx[0]).copy() for k, v in
                                           model.collect_params().items()}
@@ -364,7 +376,7 @@ def train():
             step_loss = np.asscalar(step_loss_nd.asnumpy())
 
             if batch_id % grad_interval == grad_interval - 1 or\
-                    batch_id == len(train_data_loader) - 1:
+                    batch_id == batch_num - 1:
                 log_avg_loss += step_loss / loss_denom * args.batch_size * 100.0
                 loss_denom = 0
                 step_loss = 0
@@ -374,7 +386,7 @@ def train():
                 if is_master_node:
                     logging.info('[Epoch {} Batch {}/{}] loss={:.4f}, ppl={:.4f}, '
                                 'throughput={:.2f}K wps, wc={:.2f}K'
-                                .format(epoch_id, batch_id + 1, len(train_data_loader),
+                                .format(epoch_id, batch_id + 1, batch_num,
                                         log_avg_loss / args.log_interval,
                                         np.exp(log_avg_loss / args.log_interval),
                                         wps / 1000, log_wc / 1000))
