@@ -13,7 +13,7 @@ export I_MPI_FABRICS=shm:tmi
 export I_MPI_TMI_PROVIDER=psm2
 export HFI_NO_CPUAFFINITY=1
 export I_MPI_FALLBACK=0
-export OMP_NUM_THREADS=66
+export OMP_NUM_THREADS=56
 
 ### OPA FABRIC ###
 export I_MPI_HYDRA_BOOTSTRAP=rsh

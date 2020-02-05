@@ -55,9 +55,9 @@ from utils import logging_config
 from bleu import _bpe_to_words, compute_bleu
 import dataprocessor
 
-# # to sync dataloader
-# from mpi4py import MPI
-# mpi_comm = MPI.COMM_WORLD
+# to sync processes
+from mpi4py import MPI
+mpi_comm = MPI.COMM_WORLD
 
 np.random.seed(100)
 random.seed(100)
@@ -429,6 +429,8 @@ def train():
             if is_master_node:
                 save_path = os.path.join(args.save_dir, 'epoch{:d}.params'.format(epoch_id))
                 model.save_parameters(save_path)
+        mx.nd.waitall()
+        mpi_comm.barrier()
     if is_master_node:
         save_path = os.path.join(args.save_dir, 'average.params')
         mx.nd.save(save_path, average_param_dict)
