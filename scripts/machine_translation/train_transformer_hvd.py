@@ -297,9 +297,9 @@ def train():
                                         use_average_length=True, num_shards=len(ctx), 
                                         shard_id=rank)
 
+    batch_num = len(train_data_loader)
     if is_master_node:
         logging.info('batch_num={}'.format(batch_num))
-    batch_num = len(train_data_loader)
     batch_num = mpi_comm.allreduce(batch_num, op=MPI.SUM)
     batch_num /= num_workers
     if is_master_node:
