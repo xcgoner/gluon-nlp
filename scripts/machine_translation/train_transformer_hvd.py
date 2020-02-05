@@ -296,7 +296,7 @@ def train():
                                         use_average_length=True, num_shards=len(ctx))
 
     batch_num = len(train_data_loader)
-    batch_num = comm.allreduce(batch_num, op=MPI.MIN)
+    batch_num = mpi_comm.allreduce(batch_num, op=MPI.MIN)
     if is_master_node:
         logging.info('batch_num={}'.format(batch_num))
 
