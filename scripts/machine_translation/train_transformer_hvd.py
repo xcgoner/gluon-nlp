@@ -321,7 +321,7 @@ def train():
     warmup_steps = args.warmup_steps
     grad_interval = args.num_accumulated
     model.collect_params().setattr('grad_req', 'add')
-    average_start = (batch_num // grad_interval) * (args.epochs - args.average_start)
+    average_start = (len(train_data_loader) // grad_interval) * (args.epochs - args.average_start)
     average_param_dict = None
     model.collect_params().zero_grad()
     parallel = Parallel(num_ctxs, parallel_model)
@@ -333,8 +333,6 @@ def train():
         log_start_time = time.time()
         for batch_id, seqs \
                 in enumerate(train_data_loader):
-            if batch_id == batch_num:
-                break
             if batch_id % grad_interval == 0:
                 step_num += 1
                 new_lr = args.lr / math.sqrt(args.num_units) \
@@ -361,7 +359,7 @@ def train():
             tgt_wc = np.asscalar(allreduce_np[2])
 
             if batch_id % grad_interval == grad_interval - 1 or\
-                    batch_id == batch_num - 1:
+                    batch_id == len(train_data_loader) - 1:
                 if average_param_dict is None:
                     average_param_dict = {k: v.data(ctx[0]).copy() for k, v in
                                           model.collect_params().items()}
@@ -381,7 +379,7 @@ def train():
             step_loss = np.asscalar(step_loss_nd.asnumpy())
 
             if batch_id % grad_interval == grad_interval - 1 or\
-                    batch_id == batch_num - 1:
+                    batch_id == len(train_data_loader) - 1:
                 log_avg_loss += step_loss / loss_denom * args.batch_size * 100.0
                 loss_denom = 0
                 step_loss = 0
@@ -391,7 +389,7 @@ def train():
                 if is_master_node:
                     logging.info('[Epoch {} Batch {}/{}] loss={:.4f}, ppl={:.4f}, '
                                 'throughput={:.2f}K wps, wc={:.2f}K'
-                                .format(epoch_id, batch_id + 1, batch_num,
+                                .format(epoch_id, batch_id + 1, len(train_data_loader),
                                         log_avg_loss / args.log_interval,
                                         np.exp(log_avg_loss / args.log_interval),
                                         wps / 1000, log_wc / 1000))
