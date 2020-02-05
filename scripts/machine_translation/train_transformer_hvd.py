@@ -55,9 +55,9 @@ from utils import logging_config
 from bleu import _bpe_to_words, compute_bleu
 import dataprocessor
 
-# to sync dataloader
-from mpi4py import MPI
-mpi_comm = MPI.COMM_WORLD
+# # to sync dataloader
+# from mpi4py import MPI
+# mpi_comm = MPI.COMM_WORLD
 
 np.random.seed(100)
 random.seed(100)
@@ -300,10 +300,10 @@ def train():
     batch_num = len(train_data_loader)
     if is_master_node:
         logging.info('batch_num={}'.format(batch_num))
-    batch_num = mpi_comm.allreduce(batch_num, op=MPI.SUM)
-    batch_num /= num_workers
-    if is_master_node:
-        logging.info('batch_num={}'.format(batch_num))
+    # batch_num = mpi_comm.allreduce(batch_num, op=MPI.SUM)
+    # batch_num /= num_workers
+    # if is_master_node:
+    #     logging.info('batch_num={}'.format(batch_num))
 
     if args.bleu == 'tweaked':
         bpe = bool(args.dataset != 'IWSLT2015' and args.dataset != 'TOY')
