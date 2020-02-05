@@ -155,7 +155,7 @@ def init_comm():
     return num_workers, rank, local_rank, is_master_node, ctxs
 
 num_workers, rank, local_rank, is_master_node, ctx = init_comm()
-# num_ctxs = len(ctx)
+num_ctxs = len(ctx)
 
 if is_master_node:
     logging.info(args)
