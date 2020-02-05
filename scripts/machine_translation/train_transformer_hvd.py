@@ -192,10 +192,10 @@ if args.tgt_max_len > 0:
 else:
     tgt_max_len = max_len[1]
 
-# split data
-shard_len = len(data_train) // num_workers
-data_train = data_train.shard(num_workers, rank)
-# .take(shard_len)
+# # split data
+# shard_len = len(data_train) // num_workers
+# data_train = data_train.shard(num_workers, rank)
+# # .take(shard_len)
 
 encoder, decoder = get_transformer_encoder_decoder(units=args.num_units,
                                                    hidden_size=args.hidden_size,
@@ -291,12 +291,17 @@ def train():
     trainer = hvd.DistributedTrainer(model.collect_params(), args.optimizer,
                             {'learning_rate': args.lr, 'beta2': 0.98, 'epsilon': 1e-9})
 
+    # use num_shards and shard_id to split training data
     train_data_loader, val_data_loader, test_data_loader \
         = dataprocessor.make_dataloader(data_train, data_val, data_test, args,
-                                        use_average_length=True, num_shards=len(ctx))
+                                        use_average_length=True, num_shards=len(ctx), 
+                                        shard_id=rank)
 
+    if is_master_node:
+        logging.info('batch_num={}'.format(batch_num))
     batch_num = len(train_data_loader)
-    batch_num = mpi_comm.allreduce(batch_num, op=MPI.MIN)
+    batch_num = mpi_comm.allreduce(batch_num, op=MPI.SUM)
+    batch_num /= num_workers
     if is_master_node:
         logging.info('batch_num={}'.format(batch_num))
 

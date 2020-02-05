@@ -204,7 +204,7 @@ def get_data_lengths(dataset):
 
 
 def make_dataloader(data_train, data_val, data_test, args,
-                    use_average_length=False, num_shards=0, num_workers=8):
+                    use_average_length=False, num_shards=0, shard_id=None, num_workers=8):
     """Create data loaders for training/validation/test."""
     data_train_lengths = get_data_lengths(data_train)
     data_val_lengths = get_data_lengths(data_val)
@@ -231,6 +231,7 @@ def make_dataloader(data_train, data_val, data_test, args,
                                                       shuffle=True,
                                                       use_average_length=use_average_length,
                                                       num_shards=num_shards,
+                                                      shard_id=shard_id,
                                                       bucket_scheme=bucket_scheme)
     logging.info('Train Batch Sampler:\n%s', train_batch_sampler.stats())
     train_data_loader = nlp.data.ShardedDataLoader(data_train,
