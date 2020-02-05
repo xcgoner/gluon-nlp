@@ -294,7 +294,7 @@ def train():
     # use num_shards and shard_id to split training data
     train_data_loader, val_data_loader, test_data_loader \
         = dataprocessor.make_dataloader(data_train, data_val, data_test, args,
-                                        use_average_length=True, num_shards=len(ctx), 
+                                        use_average_length=True, num_shards=num_workers, 
                                         shard_id=rank)
 
     batch_num = len(train_data_loader)
