@@ -1,5 +1,5 @@
 #!/bin/bash
-#PBS -l select=4:ncpus=112 -lplace=excl
+#PBS -l select=32:ncpus=112 -lplace=excl
 
 source activate mxnet_hvd
 source /homes/cx2/src/mxnet_hvd/MLSL/_install/intel64/bin/mlslvars.sh thread
@@ -28,9 +28,9 @@ watchfile=/homes/cx2/src/localadam/uai2020/results/train_transformer_hvd.txt
 
 cat $PBS_NODEFILE | uniq > $PBS_O_WORKDIR/hostfile
 cd /homes/cx2/src/localadam/uai2020/gluon-nlp/scripts/machine_translation
-mpirun -np 8 -machinefile $PBS_O_WORKDIR/hostfile -ppn 2 -genv I_MPI_PIN_DOMAIN auto:compact \
+mpirun -np 64 -machinefile $PBS_O_WORKDIR/hostfile -ppn 2 -genv I_MPI_PIN_DOMAIN auto:compact \
                        python train_transformer_hvd.py --dataset WMT2014BPE \
-                       --src_lang en --tgt_lang de --batch_size 10800 \
-                       --optimizer adam --num_accumulated 4 --lr 2.0 --warmup_steps 4000 \
+                       --src_lang en --tgt_lang de --batch_size 5400 \
+                       --optimizer adam --num_accumulated 1 --lr 2.0 --warmup_steps 4000 \
                        --save_dir transformer_en_de_u512 --epochs 30 --scaled \
                        --average_start 5 --num_buckets 20 --bucket_scheme exp --bleu 13a --log_interval 10 2>&1 | tee -a $watchfile
