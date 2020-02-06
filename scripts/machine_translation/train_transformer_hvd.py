@@ -397,7 +397,7 @@ def train():
                 log_avg_loss = 0
                 log_wc = 0
         mx.nd.waitall()
-        if epoch_id >= 0:
+        if epoch_id >= 5:
             valid_loss, valid_translation_out = evaluate(val_data_loader, ctx[0])
             valid_bleu_score, _, _, _, _ = compute_bleu([val_tgt_sentences], valid_translation_out,
                                                         tokenized=tokenized, tokenizer=args.bleu,
