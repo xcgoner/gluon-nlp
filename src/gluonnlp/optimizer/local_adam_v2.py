@@ -100,10 +100,12 @@ class LocalAdamV2(Optimizer):
         grad[:] *= self.rescale_grad 
         grad[:] += wd * weight
         if self.clip_gradient is not None:
-            grad = clip(grad, -self.clip_gradient, self.clip_gradient)
+            clip(grad, -self.clip_gradient, self.clip_gradient, out=grad)
 
-        mean[:] = self.beta1 * mean + (1. - self.beta1) * grad
-        cached_var[:] = self.beta2 * cached_var + (1. - self.beta2) * square(grad)
+        mean[:] *= self.beta1
+        mean[:] += (1. - self.beta1) * grad
+        cached_var[:] *= self.beta2 
+        cached_var[:] += (1. - self.beta2) * square(grad)
 
         weight[:] -= lr * ( mean / (sqrt(var) + self.epsilon) )
 
