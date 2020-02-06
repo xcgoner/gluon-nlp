@@ -24,11 +24,11 @@ export KMP_AFFINITY=granularity=fine,compact,1,0
 export MXNET_SUBGRAPH_BACKEND=MKLDNN
 
 
-watchfile=/homes/cx2/src/localadam/uai2020/results/train_transformer_hvd.txt
+watchfile=/homes/cx2/src/localadam/uai2020/results/train_transformer_hvd_64.txt
 
-cat $PBS_NODEFILE | uniq > $PBS_O_WORKDIR/hostfile
+cat $PBS_NODEFILE | uniq > $PBS_O_WORKDIR/hostfile_64
 cd /homes/cx2/src/localadam/uai2020/gluon-nlp/scripts/machine_translation
-mpirun -np 64 -machinefile $PBS_O_WORKDIR/hostfile -ppn 2 -genv I_MPI_PIN_DOMAIN auto:compact \
+mpirun -np 64 -machinefile $PBS_O_WORKDIR/hostfile_64 -ppn 2 -genv I_MPI_PIN_DOMAIN auto:compact \
                        python train_transformer_hvd.py --dataset WMT2014BPE \
                        --src_lang en --tgt_lang de --batch_size 5400 \
                        --optimizer adam --num_accumulated 1 --lr 2.0 --warmup_steps 4000 \
