@@ -153,13 +153,14 @@ def init_comm():
     rank = hvd.rank()
     local_rank = hvd.local_rank()
     is_master_node = rank == local_rank
+    is_first_worker = rank == 0
     ctxs = [mx.gpu(local_rank)] if args.gpu else [mx.cpu()]
-    return num_workers, rank, local_rank, is_master_node, ctxs
+    return num_workers, rank, local_rank, is_master_node, is_first_worker, ctxs
 
-num_workers, rank, local_rank, is_master_node, ctx = init_comm()
+num_workers, rank, local_rank, is_master_node, is_first_worker, ctx = init_comm()
 num_ctxs = len(ctx)
 
-if is_master_node:
+if is_first_worker:
     logging.info(args)
 
 data_train, data_val, data_test, val_tgt_sentences, test_tgt_sentences, src_vocab, tgt_vocab \
@@ -211,7 +212,7 @@ model = NMTModel(src_vocab=src_vocab, tgt_vocab=tgt_vocab, encoder=encoder, deco
 model.initialize(init=mx.init.Xavier(magnitude=args.magnitude), ctx=ctx)
 static_alloc = True
 model.hybridize(static_alloc=static_alloc)
-if is_master_node:
+if is_first_worker:
     logging.info(model)
 
 translator = BeamSearchTranslator(model=model, beam_size=args.beam_size,
@@ -298,11 +299,11 @@ def train():
                                         shard_id=rank)
 
     batch_num = len(train_data_loader)
-    if is_master_node:
+    if is_first_worker:
         logging.info('batch_num={}'.format(batch_num))
     # batch_num = mpi_comm.allreduce(batch_num, op=MPI.SUM)
     # batch_num /= num_workers
-    # if is_master_node:
+    # if is_first_worker:
     #     logging.info('batch_num={}'.format(batch_num))
 
     if args.bleu == 'tweaked':
@@ -386,7 +387,7 @@ def train():
             log_wc += src_wc + tgt_wc
             if (batch_id + 1) % (args.log_interval * grad_interval) == 0:
                 wps = log_wc / (time.time() - log_start_time)
-                if is_master_node:
+                if is_first_worker:
                     logging.info('[Epoch {} Batch {}/{}] loss={:.4f}, ppl={:.4f}, '
                                 'throughput={:.2f}K wps, wc={:.2f}K'
                                 .format(epoch_id, batch_id + 1, len(train_data_loader),
@@ -403,7 +404,7 @@ def train():
                                                         tokenized=tokenized, tokenizer=args.bleu,
                                                         split_compound_word=split_compound_word,
                                                         bpe=bpe)
-            if is_master_node:
+            if is_first_worker:
                 logging.info('[Epoch {}] valid Loss={:.4f}, valid ppl={:.4f}, valid bleu={:.2f}'
                             .format(epoch_id, valid_loss, np.exp(valid_loss), valid_bleu_score * 100))
             test_loss, test_translation_out = evaluate(test_data_loader, ctx[0])
@@ -411,7 +412,7 @@ def train():
                                                     tokenized=tokenized, tokenizer=args.bleu,
                                                     split_compound_word=split_compound_word,
                                                     bpe=bpe)
-            if is_master_node:
+            if is_first_worker:
                 logging.info('[Epoch {}] test Loss={:.4f}, test ppl={:.4f}, test bleu={:.2f}'
                             .format(epoch_id, test_loss, np.exp(test_loss), test_bleu_score * 100))
                 dataprocessor.write_sentences(valid_translation_out,
@@ -423,15 +424,15 @@ def train():
             if valid_bleu_score > best_valid_bleu:
                 best_valid_bleu = valid_bleu_score
                 save_path = os.path.join(args.save_dir, 'valid_best.params')
-                if is_master_node:
+                if is_first_worker:
                     logging.info('Save best parameters to {}'.format(save_path))
                     model.save_parameters(save_path)
-            if is_master_node:
+            if is_first_worker:
                 save_path = os.path.join(args.save_dir, 'epoch{:d}.params'.format(epoch_id))
                 model.save_parameters(save_path)
         mx.nd.waitall()
         mpi_comm.barrier()
-    if is_master_node:
+    if is_first_worker:
         save_path = os.path.join(args.save_dir, 'average.params')
         mx.nd.save(save_path, average_param_dict)
         if args.average_checkpoint:
@@ -456,14 +457,14 @@ def train():
     valid_bleu_score, _, _, _, _ = compute_bleu([val_tgt_sentences], valid_translation_out,
                                                 tokenized=tokenized, tokenizer=args.bleu, bpe=bpe,
                                                 split_compound_word=split_compound_word)
-    if is_master_node:
+    if is_first_worker:
         logging.info('Best model valid Loss={:.4f}, valid ppl={:.4f}, valid bleu={:.2f}'
                     .format(valid_loss, np.exp(valid_loss), valid_bleu_score * 100))
     test_loss, test_translation_out = evaluate(test_data_loader, ctx[0])
     test_bleu_score, _, _, _, _ = compute_bleu([test_tgt_sentences], test_translation_out,
                                                tokenized=tokenized, tokenizer=args.bleu, bpe=bpe,
                                                split_compound_word=split_compound_word)
-    if is_master_node:
+    if is_first_worker:
         logging.info('Best model test Loss={:.4f}, test ppl={:.4f}, test bleu={:.2f}'
                     .format(test_loss, np.exp(test_loss), test_bleu_score * 100))
         dataprocessor.write_sentences(valid_translation_out,
