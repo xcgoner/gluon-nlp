@@ -97,7 +97,8 @@ class LocalAdamV2(Optimizer):
         mean, var, cached_var = state
 
         # preprocess grad
-        grad *= self.rescale_grad + wd * weight
+        grad[:] *= self.rescale_grad 
+        grad[:] += wd * weight
         if self.clip_gradient is not None:
             grad = clip(grad, -self.clip_gradient, self.clip_gradient)
 
