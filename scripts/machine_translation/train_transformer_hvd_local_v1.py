@@ -338,6 +338,7 @@ def train():
         log_wc = 0
         loss_denom = 0
         step_loss = 0
+        start_epoch_time = time.time()
         log_start_time = time.time()
         for batch_id, seqs \
                 in enumerate(train_data_loader):
@@ -405,6 +406,8 @@ def train():
                 log_avg_loss = 0
                 log_wc = 0
         mx.nd.waitall()
+        end_epoch_time = time.time()
+        print('Epoch {} took {:.2f} seconds.'.format(epoch, end_epoch_time - start_epoch_time))
         if epoch_id >= 5:
             valid_loss, valid_translation_out = evaluate(val_data_loader, ctx[0])
             valid_bleu_score, _, _, _, _ = compute_bleu([val_tgt_sentences], valid_translation_out,
