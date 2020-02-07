@@ -30,7 +30,7 @@ cd /homes/cx2/src/localadam/uai2020/gluon-nlp/scripts/machine_translation
 mpirun -np 2 -host localhost -ppn 2 -genv I_MPI_PIN_DOMAIN auto:compact \
                        python train_transformer_hvd_local_v1.py --dataset WMT2014BPE \
                        --src_lang en --tgt_lang de --batch_size 10800 \
-                       --optimizer adam --num_accumulated 16 --lr 2.0 --warmup_steps 4000 \
+                       --optimizer adam --num_accumulated 1 --lr 2.0 --warmup_steps 4000 \
                        --save_dir transformer_en_de_u512 --epochs 30 --scaled \
                        --average_start 5 --num_buckets 20 --bucket_scheme exp --bleu 13a --log_interval 10 \
                        --local_sgd_interval 6 2>&1 | tee -a $watchfile

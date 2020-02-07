@@ -401,6 +401,8 @@ def train():
                 log_start_time = time.time()
                 log_avg_loss = 0
                 log_wc = 0
+                # debug
+                break
         mx.nd.waitall()
         end_epoch_time = time.time()
         print('Epoch {} took {:.2f} seconds.'.format(epoch, end_epoch_time - start_epoch_time))
