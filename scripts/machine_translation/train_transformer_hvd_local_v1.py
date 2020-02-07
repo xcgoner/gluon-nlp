@@ -405,7 +405,7 @@ def train():
                 break
         mx.nd.waitall()
         end_epoch_time = time.time()
-        print('Epoch {} took {:.2f} seconds.'.format(epoch, end_epoch_time - start_epoch_time))
+        print('Epoch {} took {:.2f} seconds.'.format(epoch_id, end_epoch_time - start_epoch_time))
         if epoch_id >= 5:
             valid_loss, valid_translation_out = evaluate(val_data_loader, ctx[0])
             valid_bleu_score, _, _, _, _ = compute_bleu([val_tgt_sentences], valid_translation_out,
