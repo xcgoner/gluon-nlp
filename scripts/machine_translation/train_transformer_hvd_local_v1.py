@@ -382,12 +382,13 @@ def train():
             # approximate
             log_wc += src_wc + tgt_wc
             if (batch_id + 1) % (args.log_interval * grad_interval) == 0:
-                
+
                 # sum log_wc
-                allreduce_nd = mx.nd.array([log_wc])
-                hvd.allreduce_(allreduce_nd, name='allreduce_nd', average=False)
-                allreduce_np = allreduce_nd.asnumpy()
-                log_wc = np.asscalar(allreduce_np[0])
+                # allreduce_nd = mx.nd.array([log_wc])
+                # hvd.allreduce_(allreduce_nd, name='allreduce_nd', average=False)
+                # allreduce_np = allreduce_nd.asnumpy()
+                # log_wc = np.asscalar(allreduce_np[0])
+                log_wc = mpi_comm.allreduce(log_wc, op=MPI.SUM)
 
                 wps = log_wc / (time.time() - log_start_time)
                 if is_first_worker:
