@@ -389,6 +389,7 @@ def train():
                 # allreduce_np = allreduce_nd.asnumpy()
                 # log_wc = np.asscalar(allreduce_np[0])
                 log_wc = mpi_comm.allreduce(log_wc, op=MPI.SUM)
+                log_avg_loss = mpi_comm.allreduce(log_avg_loss, op=MPI.SUM) / num_workers
 
                 wps = log_wc / (time.time() - log_start_time)
                 if is_first_worker:
@@ -401,11 +402,10 @@ def train():
                 log_start_time = time.time()
                 log_avg_loss = 0
                 log_wc = 0
-                # debug
-                break
         mx.nd.waitall()
         end_epoch_time = time.time()
-        print('Epoch {} took {:.2f} seconds.'.format(epoch_id, end_epoch_time - start_epoch_time))
+        if is_first_worker:
+            logging.info('Epoch {} took {:.2f} seconds.'.format(epoch_id, end_epoch_time - start_epoch_time))
         if epoch_id >= 5:
             valid_loss, valid_translation_out = evaluate(val_data_loader, ctx[0])
             valid_bleu_score, _, _, _, _ = compute_bleu([val_tgt_sentences], valid_translation_out,
