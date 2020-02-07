@@ -380,14 +380,16 @@ def train():
                 loss_denom = 0
                 step_loss = 0
             # approximate
-            log_wc += (src_wc + tgt_wc) * num_workers
+            log_wc += src_wc + tgt_wc
             if (batch_id + 1) % (args.log_interval * grad_interval) == 0:
+                
+                # sum log_wc
+                allreduce_nd = mx.nd.array([log_wc])
+                hvd.allreduce_(allreduce_nd, name='allreduce_nd', average=False)
+                allreduce_np = allreduce_nd.asnumpy()
+                log_wc = np.asscalar(allreduce_np[0])
+
                 wps = log_wc / (time.time() - log_start_time)
-                # # sync wps
-                # allreduce_nd = mx.nd.array([wps])
-                # hvd.allreduce_(allreduce_nd, name='allreduce_nd', average=False)
-                # allreduce_np = allreduce_nd.asnumpy()
-                # wps = np.asscalar(allreduce_np[0])
                 if is_first_worker:
                     logging.info('[Epoch {} Batch {}/{}] loss={:.4f}, ppl={:.4f}, '
                                 'throughput={:.2f}K wps, wc={:.2f}K'
