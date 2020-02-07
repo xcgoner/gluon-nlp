@@ -334,6 +334,7 @@ def train():
         log_wc = 0
         loss_denom = 0
         step_loss = 0
+        sgd_sync = False
         start_epoch_time = time.time()
         log_start_time = time.time()
         for batch_id, seqs \
@@ -348,6 +349,11 @@ def train():
             seqs = [[seq.as_in_context(context) for seq in shard]
                     for context, shard in zip(ctx, seqs)]
             Ls = []
+
+            # sync
+            if sgd_sync:
+                trainer.allreduce_params()
+
             for seq in seqs:
                 parallel.put((seq, args.batch_size))
             Ls = [parallel.get() for _ in range(len(ctx))]
@@ -360,7 +366,10 @@ def train():
                 if average_param_dict is None:
                     average_param_dict = {k: v.data(ctx[0]).copy() for k, v in
                                           model.collect_params().items()}
-                trainer.step(float(loss_denom) / args.batch_size / 100.0)
+                # sync
+                if sgd_sync:
+                    trainer.allreduce_states()
+                sgd_sync = trainer.step(float(loss_denom) / args.batch_size / 100.0)
                 param_dict = model.collect_params()
                 param_dict.zero_grad()
                 if step_num > average_start:

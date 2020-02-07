@@ -80,8 +80,8 @@ class LocalHVDTrainerV1(mx.gluon.Trainer):
             if self._local_sgd_counter == self._local_sgd_interval:
                 self._local_sgd_counter = 0
                 # synchronization
-                self.allreduce_params()
-                self.allreduce_states()
+                # self.allreduce_params()
+                # self.allreduce_states()
                 # indicate that the parameters are synchronized in the current iteration
                 return True
             return False
