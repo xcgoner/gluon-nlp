@@ -141,6 +141,7 @@ parser.add_argument('--gpu', action='store_true',
                     help='turn on to use gpu')
 parser.add_argument('--local_sgd_interval', type=int, default=6,
                     help='synchronization interval')
+parser.add_argument('--blocking', action='store_true', help='shutdown pipelining')
 args = parser.parse_args()
 logging_config(args.save_dir)
 
@@ -346,6 +347,9 @@ def train():
                 trainer.set_learning_rate(new_lr)
             src_wc, tgt_wc, bs = np.sum([(shard[2].sum(), shard[3].sum(), shard[0].shape[0])
                                          for shard in seqs], axis=0)
+            src_wc = src_wc.asscalar()
+            tgt_wc = tgt_wc.asscalar()
+            loss_denom += tgt_wc - bs
             seqs = [[seq.as_in_context(context) for seq in shard]
                     for context, shard in zip(ctx, seqs)]
             Ls = []
@@ -357,9 +361,6 @@ def train():
             for seq in seqs:
                 parallel.put((seq, args.batch_size))
             Ls = [parallel.get() for _ in range(len(ctx))]
-            src_wc = src_wc.asscalar()
-            tgt_wc = tgt_wc.asscalar()
-            loss_denom += tgt_wc - bs
 
             if batch_id % grad_interval == grad_interval - 1 or\
                     batch_id == len(train_data_loader) - 1:

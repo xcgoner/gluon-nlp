@@ -30,8 +30,8 @@ cat $PBS_NODEFILE | uniq > $PBS_O_WORKDIR/hostfile_local_32
 cd /homes/cx2/src/localadam/uai2020/gluon-nlp/scripts/machine_translation
 mpirun -np 32 -machinefile $PBS_O_WORKDIR/hostfile_local_32 -ppn 2 -genv I_MPI_PIN_DOMAIN auto:compact \
                        python train_transformer_hvd_local_v1.py --dataset WMT2014BPE \
-                       --src_lang en --tgt_lang de --batch_size 5400 \
+                       --src_lang en --tgt_lang de --batch_size 10800 \
                        --optimizer adam --num_accumulated 1 --lr 3.0 --warmup_steps 3000 \
                        --save_dir transformer_en_de_u512 --epochs 30 --scaled \
                        --average_start 5 --num_buckets 20 --bucket_scheme exp --bleu 13a --log_interval 48 \
-                       --local_sgd_interval 48 2>&1 | tee -a $watchfile
+                       --local_sgd_interval 24 2>&1 | tee -a $watchfile

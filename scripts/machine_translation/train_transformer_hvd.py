@@ -137,6 +137,7 @@ parser.add_argument('--save_dir', type=str, default='transformer_out',
                     help='directory path to save the final model and training log')
 parser.add_argument('--gpu', action='store_true',
                     help='turn on to use gpu')
+parser.add_argument('--blocking', action='store_true', help='shutdown pipelining')
 args = parser.parse_args()
 logging_config(args.save_dir)
 
@@ -348,10 +349,10 @@ def train():
             for seq in seqs:
                 parallel.put((seq, args.batch_size))
             Ls = [parallel.get() for _ in range(len(ctx))]
+            
             src_wc = src_wc.asscalar()
             tgt_wc = tgt_wc.asscalar()
             loss_denom += tgt_wc - bs
-
             # sync loss_denom, src_wc, tgt_wc
             allreduce_nd = mx.nd.array([loss_denom, src_wc, tgt_wc])
             hvd.allreduce_(allreduce_nd, name='allreduce_nd', average=False)
