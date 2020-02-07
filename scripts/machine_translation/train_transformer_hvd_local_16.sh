@@ -33,5 +33,5 @@ mpirun -np 16 -machinefile $PBS_O_WORKDIR/hostfile_local_16 -ppn 2 -genv I_MPI_P
                        --src_lang en --tgt_lang de --batch_size 10800 \
                        --optimizer adam --num_accumulated 2 --lr 3.0 --warmup_steps 3000 \
                        --save_dir transformer_en_de_u512 --epochs 30 --scaled \
-                       --average_start 5 --num_buckets 20 --bucket_scheme exp --bleu 13a --log_interval 10 \
+                       --average_start 5 --num_buckets 20 --bucket_scheme exp --bleu 13a --log_interval 48 \
                        --local_sgd_interval 12 2>&1 | tee -a $watchfile
