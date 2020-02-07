@@ -296,7 +296,8 @@ def train():
     hvd.broadcast_parameters(model.collect_params(), root_rank=0)
     trainer = LocalHVDTrainerV1(model.collect_params(), args.optimizer, 
                             {'learning_rate': args.lr, 'beta2': 0.98, 'epsilon': 1e-9}, 
-                            local_sgd_interval=args.local_sgd_interval)
+                            local_sgd_interval=args.local_sgd_interval, 
+                            blocking=args.blocking)
 
     # use num_shards and shard_id to split training data
     train_data_loader, val_data_loader, test_data_loader \
@@ -357,6 +358,7 @@ def train():
             # sync
             if sgd_sync:
                 trainer.allreduce_params()
+                trainer.allreduce_states()
 
             for seq in seqs:
                 parallel.put((seq, args.batch_size))
@@ -367,9 +369,9 @@ def train():
                 if average_param_dict is None:
                     average_param_dict = {k: v.data(ctx[0]).copy() for k, v in
                                           model.collect_params().items()}
-                # sync
-                if sgd_sync:
-                    trainer.allreduce_states()
+                # # sync
+                # if sgd_sync:
+                #     trainer.allreduce_states()
                 sgd_sync = trainer.step(float(loss_denom) / args.batch_size / 100.0)
                 param_dict = model.collect_params()
                 param_dict.zero_grad()

@@ -32,7 +32,7 @@ from horovod.mxnet.mpi_ops import allreduce, allreduce_
 
 class LocalHVDTrainerV1(mx.gluon.Trainer):
     # only works with LocalAdaAlter
-    def __init__(self, params, optimizer, optimizer_params=None, local_sgd_interval=0):
+    def __init__(self, params, optimizer, optimizer_params=None, local_sgd_interval=0, blocking=False):
         # if local_sgd_interval == 0, fully sync
 
         super(LocalHVDTrainerV1, self).__init__(
@@ -42,6 +42,8 @@ class LocalHVDTrainerV1(mx.gluon.Trainer):
 
         self._local_sgd_interval = local_sgd_interval
         self._local_sgd_counter = 0
+
+        self._blocking = blocking
 
         # print(self._local_sgd_interval)
 
@@ -88,6 +90,8 @@ class LocalHVDTrainerV1(mx.gluon.Trainer):
         return True
 
     def _allreduce_grads(self):
+        if self._blocking:
+            mx.nd.waitall()
         for i, param in enumerate(self._params):
             if param.grad_req != 'null':
                 if param.list_grad()[0].stype == 'default':
@@ -95,6 +99,8 @@ class LocalHVDTrainerV1(mx.gluon.Trainer):
                                name=str(i), priority=-i)
                 else:
                     raise ValueError("Cannot pull row_sparse parameters for local SGD")
+        if self._blocking:
+            mx.nd.waitall()
 
     def allreduce_params(self):
         """For each parameter, reduce the parameters from different contexts.
@@ -105,12 +111,18 @@ class LocalHVDTrainerV1(mx.gluon.Trainer):
         gradients to perform certain transformation, such as in gradient clipping, then
         you may want to manually call `allreduce_grads()` and `update()` separately.
         """
+        if self._blocking:
+            mx.nd.waitall()
         for i, param in enumerate(self._params):
             if param.grad_req != 'null':
                 hvd.allreduce_(param.list_data()[0], average=True, 
                                        name=str(i), priority=-i)
+        if self._blocking:
+            mx.nd.waitall()
 
     def allreduce_states(self):
+        if self._blocking:
+            mx.nd.waitall()
         for i, param in reversed(list(enumerate(self._params))):
             if param.grad_req != 'null':
                 mean, var = self._updaters[0].states[i]
@@ -121,3 +133,5 @@ class LocalHVDTrainerV1(mx.gluon.Trainer):
                                    name=str(i+2*len(self._params)), priority=i-len(self._params)*2)
                 else:
                     raise ValueError("Cannot pull row_sparse parameters for local SGD")
+        if self._blocking:
+            mx.nd.waitall()

@@ -55,6 +55,8 @@ from utils import logging_config
 from bleu import _bpe_to_words, compute_bleu
 import dataprocessor
 
+from sgd_trainer_v1 import SGDTrainerV1
+
 # to sync processes
 from mpi4py import MPI
 mpi_comm = MPI.COMM_WORLD
@@ -290,8 +292,11 @@ def evaluate(data_loader, context=ctx[0]):
 def train():
     """Training function."""
     hvd.broadcast_parameters(model.collect_params(), root_rank=0)
-    trainer = hvd.DistributedTrainer(model.collect_params(), args.optimizer,
-                            {'learning_rate': args.lr, 'beta2': 0.98, 'epsilon': 1e-9})
+    # trainer = hvd.DistributedTrainer(model.collect_params(), args.optimizer,
+    #                         {'learning_rate': args.lr, 'beta2': 0.98, 'epsilon': 1e-9})
+    trainer = SGDTrainerV1(model.collect_params(), args.optimizer,
+                            {'learning_rate': args.lr, 'beta2': 0.98, 'epsilon': 1e-9}, 
+                            blocking=args.blocking)
 
     # use num_shards and shard_id to split training data
     train_data_loader, val_data_loader, test_data_loader \
@@ -349,7 +354,7 @@ def train():
             for seq in seqs:
                 parallel.put((seq, args.batch_size))
             Ls = [parallel.get() for _ in range(len(ctx))]
-            
+
             src_wc = src_wc.asscalar()
             tgt_wc = tgt_wc.asscalar()
             loss_denom += tgt_wc - bs
