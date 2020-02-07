@@ -388,8 +388,10 @@ def train():
                 # hvd.allreduce_(allreduce_nd, name='allreduce_nd', average=False)
                 # allreduce_np = allreduce_nd.asnumpy()
                 # log_wc = np.asscalar(allreduce_np[0])
-                log_wc = mpi_comm.allreduce(log_wc, op=MPI.SUM)
-                log_avg_loss = mpi_comm.allreduce(log_avg_loss, op=MPI.SUM) / num_workers
+
+                # log_wc = mpi_comm.allreduce(log_wc, op=MPI.SUM)
+                # log_avg_loss = mpi_comm.allreduce(log_avg_loss, op=MPI.SUM) / num_workers
+                log_wc *= num_workers
 
                 wps = log_wc / (time.time() - log_start_time)
                 if is_first_worker:
