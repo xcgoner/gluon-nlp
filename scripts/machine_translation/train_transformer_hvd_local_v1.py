@@ -360,8 +360,7 @@ def train():
                 if average_param_dict is None:
                     average_param_dict = {k: v.data(ctx[0]).copy() for k, v in
                                           model.collect_params().items()}
-                # gradients are already averaged by hvd
-                trainer.step(float(loss_denom) / args.batch_size / 100.0 / num_workers)
+                trainer.step(float(loss_denom) / args.batch_size / 100.0)
                 param_dict = model.collect_params()
                 param_dict.zero_grad()
                 if step_num > average_start:
@@ -370,10 +369,10 @@ def train():
                         average_param[:] += alpha * (param_dict[name].data(ctx[0]) - average_param)
             step_loss += sum([L.asscalar() for L in Ls])
 
-            # sync step_loss
-            step_loss_nd = mx.nd.array([step_loss])
-            hvd.allreduce_(step_loss_nd, name='step_loss', average=False)
-            step_loss = np.asscalar(step_loss_nd.asnumpy())
+            # # sync step_loss
+            # step_loss_nd = mx.nd.array([step_loss])
+            # hvd.allreduce_(step_loss_nd, name='step_loss', average=False)
+            # step_loss = np.asscalar(step_loss_nd.asnumpy())
 
             if batch_id % grad_interval == grad_interval - 1 or\
                     batch_id == len(train_data_loader) - 1:
