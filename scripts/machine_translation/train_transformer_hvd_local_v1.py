@@ -306,10 +306,6 @@ def train():
     batch_num = len(train_data_loader)
     if is_first_worker:
         logging.info('batch_num={}'.format(batch_num))
-    # batch_num = mpi_comm.allreduce(batch_num, op=MPI.SUM)
-    # batch_num /= num_workers
-    # if is_first_worker:
-    #     logging.info('batch_num={}'.format(batch_num))
 
     if args.bleu == 'tweaked':
         bpe = bool(args.dataset != 'IWSLT2015' and args.dataset != 'TOY')
@@ -359,14 +355,6 @@ def train():
             tgt_wc = tgt_wc.asscalar()
             loss_denom += tgt_wc - bs
 
-            # sync loss_denom, src_wc, tgt_wc
-            allreduce_nd = mx.nd.array([loss_denom, src_wc, tgt_wc])
-            hvd.allreduce_(allreduce_nd, name='allreduce_nd', average=False)
-            allreduce_np = allreduce_nd.asnumpy()
-            loss_denom = np.asscalar(allreduce_np[0])
-            src_wc = np.asscalar(allreduce_np[1])
-            tgt_wc = np.asscalar(allreduce_np[2])
-
             if batch_id % grad_interval == grad_interval - 1 or\
                     batch_id == len(train_data_loader) - 1:
                 if average_param_dict is None:
@@ -392,9 +380,15 @@ def train():
                 log_avg_loss += step_loss / loss_denom * args.batch_size * 100.0
                 loss_denom = 0
                 step_loss = 0
-            log_wc += src_wc + tgt_wc
+            # approximate
+            log_wc += (src_wc + tgt_wc) * num_workers
             if (batch_id + 1) % (args.log_interval * grad_interval) == 0:
                 wps = log_wc / (time.time() - log_start_time)
+                # # sync wps
+                # allreduce_nd = mx.nd.array([wps])
+                # hvd.allreduce_(allreduce_nd, name='allreduce_nd', average=False)
+                # allreduce_np = allreduce_nd.asnumpy()
+                # wps = np.asscalar(allreduce_np[0])
                 if is_first_worker:
                     logging.info('[Epoch {} Batch {}/{}] loss={:.4f}, ppl={:.4f}, '
                                 'throughput={:.2f}K wps, wc={:.2f}K'
