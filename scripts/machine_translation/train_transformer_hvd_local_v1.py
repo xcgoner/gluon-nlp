@@ -331,6 +331,8 @@ def train():
     average_param_dict = None
     model.collect_params().zero_grad()
     parallel = Parallel(num_ctxs, parallel_model)
+    mx.nd.waitall()
+    mpi_comm.barrier()
     for epoch_id in range(args.epochs):
         log_avg_loss = 0
         log_wc = 0
