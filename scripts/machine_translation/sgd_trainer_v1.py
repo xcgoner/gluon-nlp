@@ -28,7 +28,7 @@ import warnings
 import math
 
 import horovod.mxnet as hvd
-from horovod.mxnet.mpi_ops import allreduce, allreduce_
+from horovod.mxnet.mpi_ops import allreduce, allreduce_, size
 
 class SGDTrainerV1(mx.gluon.Trainer):
     def __init__(self, params, optimizer, optimizer_params=None, blocking=False):
