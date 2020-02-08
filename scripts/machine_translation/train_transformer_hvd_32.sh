@@ -32,5 +32,5 @@ mpirun -np 32 -machinefile $PBS_O_WORKDIR/hostfile_32 -ppn 2 -genv I_MPI_PIN_DOM
                        python train_transformer_hvd.py --dataset WMT2014BPE \
                        --src_lang en --tgt_lang de --batch_size 5400 \
                        --optimizer adam --num_accumulated 1 --lr 2.0 --warmup_steps 4000 \
-                       --save_dir transformer_en_de_u512 --epochs 30 --scaled \
+                       --save_dir transformer_en_de_u512 --epochs 30 --scaled --blocking \
                        --average_start 5 --num_buckets 20 --bucket_scheme exp --bleu 13a --log_interval 20 2>&1 | tee -a $watchfile
