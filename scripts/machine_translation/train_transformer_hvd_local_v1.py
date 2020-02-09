@@ -343,8 +343,9 @@ def train():
                 in enumerate(train_data_loader):
             if batch_id % grad_interval == 0:
                 step_num += 1
+                sync_num = step_num / args.local_sgd_interval
                 new_lr = args.lr / math.sqrt(args.num_units) \
-                         * min(1. / math.sqrt(step_num), step_num * warmup_steps ** (-1.5))
+                         * min(1. / math.sqrt(sync_num), sync_num * warmup_steps ** (-1.5))
                 trainer.set_learning_rate(new_lr)
             src_wc, tgt_wc, bs = np.sum([(shard[2].sum(), shard[3].sum(), shard[0].shape[0])
                                          for shard in seqs], axis=0)
