@@ -97,10 +97,10 @@ class LocalAdamV3(Optimizer):
         coef2 = 1. - self.beta2**t
         lr *= math.sqrt(coef2)/coef1
 
-        if t <= self.warmup_steps:
-            epsilon = 10.0
-        else:
-            epsilon = self.epsilon
+        # if t <= self.warmup_steps:
+        #     epsilon = 10.0
+        # else:
+        #     epsilon = self.epsilon
 
         mean, var, _ = state
 
@@ -112,6 +112,9 @@ class LocalAdamV3(Optimizer):
 
         mean[:] *= self.beta1
         mean[:] += (1. - self.beta1) * grad
+
+        var[:] *= self.beta2 
+        var[:] += (1. - self.beta2) * square(grad)
 
         weight[:] -= lr * ( mean / (sqrt(var) + self.epsilon) )
 
