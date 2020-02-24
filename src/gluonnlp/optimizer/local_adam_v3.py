@@ -80,7 +80,7 @@ class LocalAdamV3(Optimizer):
         stype = weight.stype if self.lazy_update else 'default'
         return (zeros(weight.shape, weight.context, dtype=weight.dtype,
                       stype=stype),  # mean
-                zeros(weight.shape, weight.context, dtype=weight.dtype,
+                ones(weight.shape, weight.context, dtype=weight.dtype,
                       stype=stype),  # variance
                 zeros(weight.shape, weight.context, dtype=weight.dtype,
                       stype=stype))  # cached mean
@@ -113,8 +113,8 @@ class LocalAdamV3(Optimizer):
         mean[:] *= self.beta1
         mean[:] += (1. - self.beta1) * grad
 
-        var[:] *= self.beta2 
-        var[:] += (1. - self.beta2) * square(grad)
+        # var[:] *= self.beta2 
+        # var[:] += (1. - self.beta2) * square(grad)
 
         weight[:] -= lr * ( mean / (sqrt(var) + self.epsilon) )
 
