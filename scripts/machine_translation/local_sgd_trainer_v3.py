@@ -33,7 +33,7 @@ from horovod.mxnet.mpi_ops import allreduce, allreduce_
 
 class LocalHVDTrainerV3(mx.gluon.Trainer):
     # only works with LocalAdaAlter
-    def __init__(self, params, optimizer, optimizer_params=None, local_sgd_interval=0, beta1, beta2):
+    def __init__(self, params, optimizer, optimizer_params=None, local_sgd_interval=0, beta1=0.9, beta2=0.999):
         # if local_sgd_interval == 0, fully sync
 
         super(LocalHVDTrainerV3, self).__init__(
