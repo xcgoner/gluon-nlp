@@ -80,8 +80,9 @@ class LocalAdamV3(Optimizer):
         stype = weight.stype if self.lazy_update else 'default'
         return (zeros(weight.shape, weight.context, dtype=weight.dtype,
                       stype=stype),  # mean
-                ones(weight.shape, weight.context, dtype=weight.dtype,
-                      stype=stype),  # variance
+                # zeros(weight.shape, weight.context, dtype=weight.dtype,
+                #       stype=stype),  # variance
+                ones(weight.shape, weight.context, dtype=weight.dtype),  # variance
                 zeros(weight.shape, weight.context, dtype=weight.dtype,
                       stype=stype))  # cached mean
 
