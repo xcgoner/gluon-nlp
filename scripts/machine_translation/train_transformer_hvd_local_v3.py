@@ -297,7 +297,8 @@ def train():
     beta1=0.9
     beta2=0.98
     trainer = LocalHVDTrainerV3(model.collect_params(), args.optimizer, 
-                            {'learning_rate': args.lr, 'beta1': beta1, 'beta2': beta2, 'epsilon': 1e-9}, 
+                            {'learning_rate': args.lr, 'beta1': beta1, 'beta2': beta2, 
+                             'warmup_steps': args.local_sgd_interval, 'epsilon': 1e-9}, 
                             local_sgd_interval=args.local_sgd_interval, beta1=beta2, beta2=beta2)
 
     # use num_shards and shard_id to split training data
