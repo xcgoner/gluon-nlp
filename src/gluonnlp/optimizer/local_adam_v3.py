@@ -98,7 +98,7 @@ class LocalAdamV3(Optimizer):
         lr *= math.sqrt(coef2)/coef1
 
         if t <= self.warmup_steps:
-            epsilon = 1.0
+            epsilon = 10.0
         else:
             epsilon = self.epsilon
 
