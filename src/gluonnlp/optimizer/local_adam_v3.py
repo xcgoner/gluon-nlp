@@ -66,7 +66,7 @@ class LocalAdamV3(Optimizer):
        if the storage types of weight and grad are both ``row_sparse``.
     """
     def __init__(self, learning_rate=0.001, beta1=0.9, beta2=0.999, epsilon=1e-8, 
-                 warmup_steps = 1,
+                 local_sgd_interval = 1,
                  lazy_update=True, **kwargs):
         super(LocalAdamV3, self).__init__(learning_rate=learning_rate, **kwargs)
         self.beta1 = beta1
@@ -74,7 +74,7 @@ class LocalAdamV3(Optimizer):
         self.epsilon = epsilon
         self.lazy_update = lazy_update
 
-        self.warmup_steps = warmup_steps
+        self.local_sgd_interval = local_sgd_interval
 
     def create_state(self, index, weight):
         stype = weight.stype if self.lazy_update else 'default'
@@ -95,11 +95,11 @@ class LocalAdamV3(Optimizer):
 
         t = self._index_update_count[index]
         coef1 = 1. - self.beta1**t
-        coef2 = 1. - self.beta2**t
+        coef2 = 1. - self.beta2**((t-1) // self.local_sgd_interval * self.local_sgd_interval)
         lr *= math.sqrt(coef2)/coef1
 
         epsilon = self.epsilon
-        if t <= self.warmup_steps:
+        if t <= self.local_sgd_interval:
             epsilon = 1.0
 
         mean, var, _ = state
