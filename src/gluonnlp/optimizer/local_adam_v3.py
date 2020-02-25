@@ -80,9 +80,9 @@ class LocalAdamV3(Optimizer):
         stype = weight.stype if self.lazy_update else 'default'
         return (zeros(weight.shape, weight.context, dtype=weight.dtype,
                       stype=stype),  # mean
-                # zeros(weight.shape, weight.context, dtype=weight.dtype,
-                #       stype=stype),  # variance
-                ones(weight.shape, weight.context, dtype=weight.dtype),  # variance
+                zeros(weight.shape, weight.context, dtype=weight.dtype,
+                      stype=stype),  # variance
+                # ones(weight.shape, weight.context, dtype=weight.dtype),  # variance
                 zeros(weight.shape, weight.context, dtype=weight.dtype,
                       stype=stype))  # cached mean
 
@@ -99,8 +99,8 @@ class LocalAdamV3(Optimizer):
         lr *= math.sqrt(coef2)/coef1
 
         epsilon = self.epsilon
-        # if t <= self.local_sgd_interval * 2:
-        #     epsilon = 1.0
+        if t <= self.local_sgd_interval * 2:
+            epsilon = 1.0
 
         mean, var, _ = state
 
