@@ -95,7 +95,8 @@ class LocalAdamV3(Optimizer):
 
         t = self._index_update_count[index]
         coef1 = 1. - self.beta1**t
-        coef2 = 1. - self.beta2**((t-1) // self.local_sgd_interval * self.local_sgd_interval)
+        # coef2 = 1. - self.beta2**((t-1) // self.local_sgd_interval * self.local_sgd_interval)
+        coef2 = 1. - self.beta2**((t-1) // self.local_sgd_interval)
         lr *= math.sqrt(coef2)/coef1
 
         epsilon = self.epsilon

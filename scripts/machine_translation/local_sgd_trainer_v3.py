@@ -48,7 +48,8 @@ class LocalHVDTrainerV3(mx.gluon.Trainer):
         self._beta1 = beta1
         self._beta2 = beta2
         self._coef1 = beta1**local_sgd_interval
-        self._coef2 = beta2**local_sgd_interval
+        # self._coef2 = beta2**local_sgd_interval
+        self._coef2 = beta2
 
         # print(self._local_sgd_interval)
 
