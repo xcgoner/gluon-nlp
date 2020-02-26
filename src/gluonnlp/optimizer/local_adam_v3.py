@@ -94,14 +94,16 @@ class LocalAdamV3(Optimizer):
         wd = self._get_wd(index)
 
         t = self._index_update_count[index]
-        coef1 = 1. - self.beta1**t
-        # coef2 = 1. - self.beta2**((t-1) // self.local_sgd_interval * self.local_sgd_interval)
-        coef2 = 1. - self.beta2**((t-1) // self.local_sgd_interval)
+        beta1 = self.beta1
+        beta2 = self.beta2
+        coef1 = 1. - beta1**t
+        coef2 = 1. - beta2**((t-1) // self.local_sgd_interval * self.local_sgd_interval + 1)
+        # coef2 = 1. - self.beta2**((t-1) // self.local_sgd_interval)
         lr *= math.sqrt(coef2)/coef1
 
         epsilon = self.epsilon
-        if t <= self.local_sgd_interval * 2:
-            epsilon = 1.0
+        # if t <= self.local_sgd_interval * 2:
+        #     epsilon = 1.0
 
         mean, var, _ = state
 
@@ -117,7 +119,9 @@ class LocalAdamV3(Optimizer):
         # var[:] *= self.beta2 
         # var[:] += (1. - self.beta2) * square(grad)
 
-        weight[:] -= lr * ( mean / (sqrt(var) + epsilon) )
+        # weight[:] -= lr * ( mean / (sqrt(var) + epsilon) )
+
+        weight[:] -= lr * ( mean / (sqrt(beta2*var + (1-beta2)*square(grad)) + epsilon) )
 
 
 
