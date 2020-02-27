@@ -82,9 +82,10 @@ class LocalAdamV3(Optimizer):
                       stype=stype),  # mean
                 zeros(weight.shape, weight.context, dtype=weight.dtype,
                       stype=stype),  # variance
-                # ones(weight.shape, weight.context, dtype=weight.dtype),  # variance
                 zeros(weight.shape, weight.context, dtype=weight.dtype,
-                      stype=stype))  # cached mean
+                      stype=stype),  # cached mean
+                zeros(weight.shape, weight.context, dtype=weight.dtype,
+                      stype=stype))  # cached variance
 
     def update(self, index, weight, grad, state):
         assert(isinstance(weight, NDArray))
@@ -97,15 +98,16 @@ class LocalAdamV3(Optimizer):
         beta1 = self.beta1
         beta2 = self.beta2
         coef1 = 1. - beta1**t
-        coef2 = 1. - beta2**((t-1) // self.local_sgd_interval * self.local_sgd_interval + 1)
+        # coef2 = 1. - beta2**((t-1) // self.local_sgd_interval * self.local_sgd_interval + 1)
         # coef2 = 1. - self.beta2**((t-1) // self.local_sgd_interval)
+        coef2 = 1. - self.beta2**t
         lr *= math.sqrt(coef2)/coef1
 
         epsilon = self.epsilon
         # if t <= self.local_sgd_interval * 2:
         #     epsilon = 1.0
 
-        mean, var, _ = state
+        mean, var, _, _ = state
 
         # preprocess grad
         grad[:] *= self.rescale_grad 
@@ -116,12 +118,12 @@ class LocalAdamV3(Optimizer):
         mean[:] *= self.beta1
         mean[:] += (1. - self.beta1) * grad
 
-        # var[:] *= self.beta2 
-        # var[:] += (1. - self.beta2) * square(grad)
+        var[:] *= self.beta2 
+        var[:] += (1. - self.beta2) * square(grad)
 
-        # weight[:] -= lr * ( mean / (sqrt(var) + epsilon) )
+        weight[:] -= lr * ( mean / (sqrt(var) + epsilon) )
 
-        weight[:] -= lr * ( mean / (sqrt(beta2*var + (1-beta2)*square(grad)) + epsilon) )
+        # weight[:] -= lr * ( mean / (sqrt(beta2*var + (1-beta2)*square(grad)) + epsilon) )
 
 
 

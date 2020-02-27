@@ -298,7 +298,7 @@ def train():
     beta2=0.98
     trainer = LocalHVDTrainerV3(model.collect_params(), args.optimizer, 
                             {'learning_rate': args.lr, 'beta1': beta1, 'beta2': beta2, 
-                             'local_sgd_interval': args.local_sgd_interval, 'epsilon': 1e-8}, 
+                             'local_sgd_interval': args.local_sgd_interval, 'epsilon': 1e-9}, 
                             local_sgd_interval=args.local_sgd_interval, beta1=beta1, beta2=beta2)
 
     # use num_shards and shard_id to split training data
@@ -424,7 +424,7 @@ def train():
             logging.info('Epoch {} took {:.2f} seconds.'.format(epoch_id, end_epoch_time - start_epoch_time))
         if epoch_id >= 5:
             trainer.allreduce_params()
-            trainer.allreduce_states()
+            # trainer.allreduce_states()
             valid_loss, valid_translation_out = evaluate(val_data_loader, ctx[0])
             valid_bleu_score, _, _, _, _ = compute_bleu([val_tgt_sentences], valid_translation_out,
                                                         tokenized=tokenized, tokenizer=args.bleu,
