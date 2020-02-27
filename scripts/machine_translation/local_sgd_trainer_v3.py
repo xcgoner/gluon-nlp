@@ -130,6 +130,6 @@ class LocalHVDTrainerV3(mx.gluon.Trainer):
                     cached_var[:] *= self._coef2
                     cached_var[:] += (1-self._coef2) * square( ( mean - self._coef1*cached_mean ) / (1-self._coef1) )
                     cached_mean[:] = mean
-                    vat[:] = cached_var
+                    var[:] = cached_var
                 else:
                     raise ValueError("Cannot pull row_sparse parameters for local SGD")
