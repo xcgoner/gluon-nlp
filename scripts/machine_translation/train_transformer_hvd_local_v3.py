@@ -333,12 +333,12 @@ def train():
     parallel = Parallel(num_ctxs, parallel_model)
     mx.nd.waitall()
     mpi_comm.barrier()
+    sgd_sync = False
     for epoch_id in range(args.epochs):
         log_avg_loss = 0
         log_wc = 0
         loss_denom = 0
         step_loss = 0
-        sgd_sync = False
         start_epoch_time = time.time()
         log_start_time = time.time()
         for batch_id, seqs \
