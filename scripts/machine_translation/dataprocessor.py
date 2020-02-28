@@ -233,7 +233,7 @@ def make_dataloader(data_train, data_val, data_test, args,
                                                       num_shards=num_shards,
                                                       shard_id=shard_id,
                                                       bucket_scheme=bucket_scheme)
-    logging.info('Train Batch Sampler:\n%s', train_batch_sampler.stats())
+    # logging.info('Train Batch Sampler:\n%s', train_batch_sampler.stats())
     train_data_loader = nlp.data.ShardedDataLoader(data_train,
                                                    batch_sampler=train_batch_sampler,
                                                    batchify_fn=train_batchify_fn,
@@ -246,7 +246,7 @@ def make_dataloader(data_train, data_val, data_test, args,
                                                     shuffle=False,
                                                     use_average_length=use_average_length,
                                                     bucket_scheme=bucket_scheme)
-    logging.info('Valid Batch Sampler:\n%s', val_batch_sampler.stats())
+    # logging.info('Valid Batch Sampler:\n%s', val_batch_sampler.stats())
     val_data_loader = gluon.data.DataLoader(data_val,
                                             batch_sampler=val_batch_sampler,
                                             batchify_fn=test_batchify_fn,
@@ -258,7 +258,7 @@ def make_dataloader(data_train, data_val, data_test, args,
                                                      shuffle=False,
                                                      use_average_length=use_average_length,
                                                      bucket_scheme=bucket_scheme)
-    logging.info('Test Batch Sampler:\n%s', test_batch_sampler.stats())
+    # logging.info('Test Batch Sampler:\n%s', test_batch_sampler.stats())
     test_data_loader = gluon.data.DataLoader(data_test,
                                              batch_sampler=test_batch_sampler,
                                              batchify_fn=test_batchify_fn,

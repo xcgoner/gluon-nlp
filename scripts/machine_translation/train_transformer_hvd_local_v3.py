@@ -217,8 +217,8 @@ model = NMTModel(src_vocab=src_vocab, tgt_vocab=tgt_vocab, encoder=encoder, deco
 model.initialize(init=mx.init.Xavier(magnitude=args.magnitude), ctx=ctx)
 static_alloc = True
 model.hybridize(static_alloc=static_alloc)
-if is_first_worker:
-    logging.info(model)
+# if is_first_worker:
+#     logging.info(model)
 
 translator = BeamSearchTranslator(model=model, beam_size=args.beam_size,
                                   scorer=nlp.model.BeamSearchScorer(alpha=args.lp_alpha,
@@ -308,8 +308,8 @@ def train():
                                         shard_id=rank)
 
     batch_num = len(train_data_loader)
-    if is_first_worker:
-        logging.info('batch_num={}'.format(batch_num))
+    # if is_first_worker:
+    #     logging.info('batch_num={}'.format(batch_num))
 
     if args.bleu == 'tweaked':
         bpe = bool(args.dataset != 'IWSLT2015' and args.dataset != 'TOY')
