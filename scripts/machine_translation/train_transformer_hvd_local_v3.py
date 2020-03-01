@@ -410,11 +410,11 @@ def train():
                 wps = log_wc / (time.time() - log_start_time)
                 if is_first_worker:
                     logging.info('[Epoch {} Batch {}/{}] loss={:.4f}, ppl={:.4f}, '
-                                'throughput={:.2f}K wps, wc={:.2f}K'
+                                'throughput={:.2f}K wps, wc={:.2f}K, lr={:.4f}'
                                 .format(epoch_id, batch_id + 1, len(train_data_loader),
                                         log_avg_loss / args.log_interval,
                                         np.exp(log_avg_loss / args.log_interval),
-                                        wps / 1000, log_wc / 1000))
+                                        wps / 1000, log_wc / 1000, new_lr))
                 log_start_time = time.time()
                 log_avg_loss = 0
                 log_wc = 0
