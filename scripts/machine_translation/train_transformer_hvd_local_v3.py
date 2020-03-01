@@ -345,7 +345,7 @@ def train():
                 in enumerate(train_data_loader):
             if batch_id % grad_interval == 0:
                 step_num += 1
-                # sync_num = step_num / args.local_sgd_interval
+                sync_num = (step_num-1) // args.local_sgd_interval
                 new_lr = args.lr / math.sqrt(args.num_units) \
                          * min(1. / math.sqrt(step_num), step_num * warmup_steps ** (-1.5))
                 trainer.set_learning_rate(new_lr)
