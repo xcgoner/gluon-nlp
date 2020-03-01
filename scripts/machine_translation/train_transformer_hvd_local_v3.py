@@ -414,7 +414,7 @@ def train():
                                 .format(epoch_id, batch_id + 1, len(train_data_loader),
                                         log_avg_loss / args.log_interval,
                                         np.exp(log_avg_loss / args.log_interval),
-                                        wps / 1000, log_wc / 1000, new_lr))
+                                        wps / 1000, log_wc / 1000, new_lr*math.sqrt(args.num_units)*10))
                 log_start_time = time.time()
                 log_avg_loss = 0
                 log_wc = 0
