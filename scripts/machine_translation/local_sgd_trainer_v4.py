@@ -22,11 +22,13 @@
 from mxnet import optimizer as opt
 from mxnet.gluon.parameter import ParameterDict, Parameter
 from mxnet.ndarray import square
+import mxnet.ndarray as nd
 
 import mxnet as mx
 import types
 import warnings
 import math
+import logging
 
 import horovod.mxnet as hvd
 from horovod.mxnet.mpi_ops import allreduce, allreduce_
@@ -125,19 +127,29 @@ class LocalHVDTrainerV4(mx.gluon.Trainer):
     def allreduce_states(self):
         # only for Adam
 
+        # debug
+        var_sum = 0
+        g_square_sum = 0
+
         for i, param in reversed(list(enumerate(self._params))):
             if param.grad_req != 'null':
                 mean, var, cached_mean, cached_g_square = self._updaters[0].states[i]
                 if param._stype == 'default':
                     hvd.allreduce_(mean, average=True, 
                                    name=str(i+len(self._params)), priority=i-len(self._params)*2)
+                    g_square = square( ( mean - self._coef1*cached_mean ) / (1-self._coef1) )
                     if self._update_counter <= self._local_sgd_warmup:
                         cached_var = cached_g_square
                         cached_var[:] *= self._coef2
-                        cached_var[:] += (1-self._coef2) * square( ( mean - self._coef1*cached_mean ) / (1-self._coef1) )
+                        cached_var[:] += (1-self._coef2) * g_square
                         var[:] = cached_var
                     if self._update_counter >= self._local_sgd_warmup:
-                        cached_g_square[:] = square( ( mean - self._coef1*cached_mean ) / (1-self._coef1) )
+                        cached_g_square[:] = g_square
                     cached_mean[:] = mean
+
+                    # debug
+                    var_sum += nd.asnumpy(var.sum())
+                    g_square_sum += nd.asnumpy(g_square.sum())
+                    logging.info('var: {}, g_square: {}'.format(var_sum,g_square_sum))
                 else:
                     raise ValueError("Cannot pull row_sparse parameters for local SGD")
