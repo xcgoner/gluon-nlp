@@ -148,8 +148,8 @@ class LocalHVDTrainerV4(mx.gluon.Trainer):
                     cached_mean[:] = mean
 
                     # debug
-                    var_sum += nd.asnumpy(var.sum())
-                    g_square_sum += nd.asnumpy(g_square.sum())
+                    var_sum += var.sum().asnumpy()
+                    g_square_sum += g_square.sum().asnumpy()
                 else:
                     raise ValueError("Cannot pull row_sparse parameters for local SGD")
         logging.info('var: {}, g_square: {}'.format(var_sum,g_square_sum))
