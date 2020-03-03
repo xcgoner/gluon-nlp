@@ -25,6 +25,7 @@ from .lamb import *
 from .local_adam_v1 import *
 from .local_adam_v2 import *
 from .local_adam_v3 import *
+from .local_adam_v4 import *
 
-__all__ = bert_adam.__all__ + lamb.__all__ + local_adam_v1.__all__ + local_adam_v2.__all__ + local_adam_v3.__all__
+__all__ = bert_adam.__all__ + lamb.__all__ + local_adam_v1.__all__ + local_adam_v2.__all__ + local_adam_v3.__all__ + local_adam_v4.__all__
 
