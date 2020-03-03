@@ -153,4 +153,4 @@ class LocalHVDTrainerV4(mx.gluon.Trainer):
                 else:
                     raise ValueError("Cannot pull row_sparse parameters for local SGD")
         if hvd.rank() == 0:
-            logging.info('var: {}, g_square: {}'.format(var_sum,g_square_sum))
+            logging.info('t:{}, var: {}, g_square: {}'.format(self._update_counter, var_sum,g_square_sum))
