@@ -114,12 +114,9 @@ class LocalAdamV4(Optimizer):
         mean[:] *= beta1
         mean[:] += (1. - beta1) * grad
 
-        var[:] *= beta2 
-
         if t <= self.local_sgd_warmup:
+            var[:] *= beta2 
             var[:] += (1. - beta2) * square(grad)
-        else:
-            var[:] += (1. - beta2) * cached_g_square
 
         weight[:] -= lr * ( mean / (sqrt(var) + epsilon) )
 

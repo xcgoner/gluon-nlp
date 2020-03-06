@@ -133,18 +133,13 @@ class LocalHVDTrainerV4(mx.gluon.Trainer):
 
         for i, param in reversed(list(enumerate(self._params))):
             if param.grad_req != 'null':
-                mean, var, cached_mean, cached_g_square = self._updaters[0].states[i]
+                mean, var, cached_mean, cached_var = self._updaters[0].states[i]
                 if param._stype == 'default':
                     hvd.allreduce_(mean, average=True, 
                                    name=str(i+len(self._params)), priority=i-len(self._params)*2)
-                    g_square = square( ( mean - self._coef1*cached_mean ) / (1-self._coef1) )
-                    if self._update_counter <= self._local_sgd_warmup:
-                        cached_var = cached_g_square
-                        cached_var[:] *= self._coef2
-                        cached_var[:] += (1-self._coef2) * g_square
-                        var[:] = cached_var
-                    if self._update_counter >= self._local_sgd_warmup:
-                        cached_g_square[:] = g_square
+                    cached_var[:] *= self._coef2
+                    cached_var[:] += (1-self._coef2) * square( ( mean - self._coef1*cached_mean ) / (1-self._coef1) )
+                    var[:] = cached_var
                     cached_mean[:] = mean
 
                     # # debug
