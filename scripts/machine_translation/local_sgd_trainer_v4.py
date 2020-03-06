@@ -97,7 +97,7 @@ class LocalHVDTrainerV4(mx.gluon.Trainer):
                     g = param.list_grad()[0].copy()
                     g_square = param.list_grad()[0].square()
                     hvd.allreduce_(g, average=True, name=str(i), priority=0)
-                    hvd.allreduce_(g_square, average=True, name=str(i), priority=0)
+                    hvd.allreduce_(g_square, average=True, name=str(i+len(self._params)), priority=1)
                     g_sum_square += g.square().sum().asnumpy()
                     g_square_sum += g_square.sum().asnumpy()
                 else:
