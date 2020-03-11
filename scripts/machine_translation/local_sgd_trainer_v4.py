@@ -148,7 +148,7 @@ class LocalHVDTrainerV4(mx.gluon.Trainer):
         # var_sum = 0
         # g_square_sum = 0
 
-        coef1 = 1 - beta1**self._update_counter
+        coef1 = 1 - self._beta1**self._update_counter
 
         for i, param in reversed(list(enumerate(self._params))):
             if param.grad_req != 'null':
