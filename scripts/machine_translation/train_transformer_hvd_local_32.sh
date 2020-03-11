@@ -34,4 +34,4 @@ mpirun -np 32 -machinefile $PBS_O_WORKDIR/hostfile_local_32 -ppn 2 -genv I_MPI_P
                        --optimizer localadamv4 --num_accumulated 1 --lr 2.0 --warmup_steps 4000 \
                        --save_dir transformer_en_de_u512 --epochs 30 --scaled \
                        --average_start 5 --num_buckets 20 --bucket_scheme exp --bleu 13a --log_interval 16 \
-                       --local_sgd_interval 4 2>&1 | tee -a $watchfile
+                       --local_sgd_interval 4 --local_sgd_warmup 150 2>&1 | tee -a $watchfile
