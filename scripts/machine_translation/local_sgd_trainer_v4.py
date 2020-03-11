@@ -157,7 +157,7 @@ class LocalHVDTrainerV4(mx.gluon.Trainer):
                     hvd.allreduce_(mean, average=True, 
                                    name=str(i+len(self._params)), priority=i-len(self._params)*2)
                     cached_var[:] *= self._coef2
-                    cached_var[:] += (1-self._coef2) * square( mean / self._coef1 )
+                    cached_var[:] += (1-self._coef2) * square( mean / coef1 )
                     var[:] = cached_var
                     # cached_mean[:] = mean
 
