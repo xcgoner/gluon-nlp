@@ -103,7 +103,7 @@ class LocalAdamV4(Optimizer):
 
         epsilon = self.epsilon
 
-        mean, var, _, cached_g_square = state
+        mean, var, _, _ = state
 
         # preprocess grad
         grad[:] *= self.rescale_grad 
@@ -114,9 +114,8 @@ class LocalAdamV4(Optimizer):
         mean[:] *= beta1
         mean[:] += (1. - beta1) * grad
 
-        if t <= self.local_sgd_warmup:
-            var[:] *= beta2 
-            var[:] += (1. - beta2) * square(grad)
+        var[:] *= beta2 
+        var[:] += (1. - beta2) * square(grad)
 
         weight[:] -= lr * ( mean / (sqrt(var) + epsilon) )
 
