@@ -89,21 +89,21 @@ class LocalHVDTrainerV4(mx.gluon.Trainer):
         self._update_counter += 1
 
         # debug
-        # g_sum_square = 0
-        # g_square_sum = 0
-        # for i, param in reversed(list(enumerate(self._params))):
-        #     if param.grad_req != 'null':
-        #         if param._stype == 'default':
-        #             g = param.list_grad()[0].copy()
-        #             g_square = param.list_grad()[0].square()
-        #             hvd.allreduce_(g, average=True, name=str(i), priority=0)
-        #             hvd.allreduce_(g_square, average=True, name=str(i+len(self._params)), priority=1)
-        #             g_sum_square += g.square().sum().asnumpy()
-        #             g_square_sum += g_square.sum().asnumpy()
-        #         else:
-        #             raise ValueError("Cannot pull row_sparse parameters for local SGD")
-        # if hvd.rank() == 0:
-        #     logging.info('t:{}, g_sum_square:{}, g_square_sum: {}'.format(self._update_counter, g_sum_square, g_square_sum))
+        g_sum_square = 0
+        g_square_sum = 0
+        for i, param in reversed(list(enumerate(self._params))):
+            if param.grad_req != 'null':
+                if param._stype == 'default':
+                    g = param.list_grad()[0].copy()
+                    g_square = param.list_grad()[0].square()
+                    hvd.allreduce_(g, average=True, name=str(i), priority=0)
+                    hvd.allreduce_(g_square, average=True, name=str(i+len(self._params)), priority=1)
+                    g_sum_square += g.square().sum().asnumpy()
+                    g_square_sum += g_square.sum().asnumpy()
+                else:
+                    raise ValueError("Cannot pull row_sparse parameters for local SGD")
+        if hvd.rank() == 0:
+            logging.info('t:{}, g_sum_square:{}, g_square_sum: {}'.format(self._update_counter, g_sum_square, g_square_sum))
 
         if self._local_sgd_interval > 1:
             # local sgd
@@ -145,7 +145,7 @@ class LocalHVDTrainerV4(mx.gluon.Trainer):
         # only for Adam
 
         # debug
-        # var_sum = 0
+        var_sum = 0
         # g_square_sum = 0
 
         coef1 = 1 - self._beta1**self._update_counter
@@ -162,11 +162,11 @@ class LocalHVDTrainerV4(mx.gluon.Trainer):
                     # cached_mean[:] = mean
 
                     # debug
-                    # var_sum += var.sum().asnumpy()
+                    var_sum += var.sum().asnumpy()
                     # g_square_sum += g_square.sum().asnumpy()
                 else:
                     raise ValueError("Cannot pull row_sparse parameters for local SGD")
         # debug
-        # if hvd.rank() == 0:
-        #     logging.info('t:{}, var: {}'.format(self._update_counter, var_sum))
+        if hvd.rank() == 0:
+            logging.info('t:{}, var: {}'.format(self._update_counter, var_sum))
             # logging.info('t:{}, var: {}, g_square: {}'.format(self._update_counter, var_sum,g_square_sum))
