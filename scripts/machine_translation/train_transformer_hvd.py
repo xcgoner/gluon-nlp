@@ -364,7 +364,7 @@ def train():
                     average_param_dict = {k: v.data(ctx[0]).copy() for k, v in
                                           model.collect_params().items()}
                 # gradients are already averaged by hvd
-                trainer.step(float(loss_denom) / args.batch_size / rescale_loss / num_workers)
+                trainer.step(float(loss_denom) / args.batch_size / rescale_loss)
                 param_dict = model.collect_params()
                 param_dict.zero_grad()
                 if step_num > average_start:
