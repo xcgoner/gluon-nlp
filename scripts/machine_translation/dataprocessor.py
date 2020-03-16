@@ -201,7 +201,7 @@ def get_data_lengths(dataset):
     return list(dataset.transform(get_lengths))
 
 def get_dataloader(data_set, args, dataset_type,
-                   use_average_length=False, num_shards=0, num_workers=8):
+                   use_average_length=False, num_shards=0, shard_id=None, num_workers=8):
     """Create data loaders for training/validation/test."""
     assert dataset_type in ['train', 'val', 'test']
 
@@ -235,6 +235,7 @@ def get_dataloader(data_set, args, dataset_type,
                                                 shuffle=(dataset_type == 'train'),
                                                 use_average_length=use_average_length,
                                                 num_shards=num_shards,
+                                                shard_id=shard_id,
                                                 bucket_scheme=bucket_scheme)
 
     if dataset_type == 'train':
@@ -257,11 +258,12 @@ def get_dataloader(data_set, args, dataset_type,
     return data_loader
 
 def make_dataloader(data_train, data_val, data_test, args,
-                    use_average_length=False, num_shards=0, num_workers=8):
+                    use_average_length=False, num_shards=0, shard_id=None, num_workers=8):
     """Create data loaders for training/validation/test."""
     train_data_loader = get_dataloader(data_train, args, dataset_type='train',
                                        use_average_length=use_average_length,
                                        num_shards=num_shards,
+                                       shard_id=shard_id,
                                        num_workers=num_workers)
 
     val_data_loader = get_dataloader(data_val, args, dataset_type='val',

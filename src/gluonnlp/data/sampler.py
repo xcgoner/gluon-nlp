@@ -301,7 +301,7 @@ class FixedBucketSampler(Sampler):
     """
     def __init__(self, lengths, batch_size, num_buckets=10, bucket_keys=None,
                  ratio=0, shuffle=False, use_average_length=False, num_shards=0,
-                 bucket_scheme=ConstWidthBucket()):
+                 shard_id=None, bucket_scheme=ConstWidthBucket()):
         assert len(lengths) > 0, 'FixedBucketSampler does not support empty lengths.'
         assert batch_size > 0, 'Batch size must be larger than 0.'
         assert ratio >= 0, 'batch size scaling ratio cannot be negative.'
@@ -319,6 +319,7 @@ class FixedBucketSampler(Sampler):
             attr_num = self._lengths.shape[1]
         self._shuffle = shuffle
         self._num_shards = num_shards
+        self._shard_id = shard_id
         self._bucket_scheme = bucket_scheme
         max_lengths = self._lengths.max(axis=0)
         min_lengths = self._lengths.min(axis=0)
@@ -396,16 +397,24 @@ class FixedBucketSampler(Sampler):
                     batch_idx = len(self._batch_infos) - self._num_shards
                 batch = self._batch_infos[batch_idx: batch_idx + self._num_shards]
                 bucket_ids, batch_begins = list(zip(*batch))
-                batch_sizes = [self._bucket_batch_sizes[bucket_id] for bucket_id in bucket_ids]
-                batch_ends = [min(batch_begin + batch_size,
-                                  len(self._bucket_sample_ids[bucket_id]))
-                              for bucket_id, batch_begin, batch_size in zip(bucket_ids,
-                                                                            batch_begins,
-                                                                            batch_sizes)]
-                yield [self._bucket_sample_ids[bucket_id][batch_begin:batch_end]
-                       for bucket_id, batch_begin, batch_end in zip(bucket_ids,
-                                                                    batch_begins,
-                                                                    batch_ends)]
+                if self._shard_id is None:
+                    batch_sizes = [self._bucket_batch_sizes[bucket_id] for bucket_id in bucket_ids]
+                    batch_ends = [min(batch_begin + batch_size,
+                                    len(self._bucket_sample_ids[bucket_id]))
+                                for bucket_id, batch_begin, batch_size in zip(bucket_ids,
+                                                                                batch_begins,
+                                                                                batch_sizes)]
+                    yield [self._bucket_sample_ids[bucket_id][batch_begin:batch_end]
+                        for bucket_id, batch_begin, batch_end in zip(bucket_ids,
+                                                                        batch_begins,
+                                                                        batch_ends)]
+                else:
+                    bucket_id = bucket_ids[self._shard_id]
+                    batch_begin = batch_begins[self._shard_id]
+                    batch_size = self._bucket_batch_sizes[bucket_id]
+                    batch_end = min(batch_begin + batch_size,
+                                    len(self._bucket_sample_ids[bucket_id]))
+                    yield [self._bucket_sample_ids[bucket_id][batch_begin:batch_end]]
         else:
             for bucket_id, batch_begin in self._batch_infos:
                 batch_size = self._bucket_batch_sizes[bucket_id]
