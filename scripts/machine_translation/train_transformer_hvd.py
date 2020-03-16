@@ -63,6 +63,8 @@ mx.random.seed(10000)
 
 nlp.utils.check_version('0.9.0')
 
+os.environ['MXNET_GPU_MEM_POOL_TYPE'] = 'Round'
+
 parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     description='Neural Machine Translation Example with the Transformer Model.')
