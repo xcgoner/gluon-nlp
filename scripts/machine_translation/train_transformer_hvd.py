@@ -299,10 +299,6 @@ def train():
     batch_num = len(train_data_loader)
     if is_first_worker:
         logging.info('batch_num={}'.format(batch_num))
-    # batch_num = mpi_comm.allreduce(batch_num, op=MPI.SUM)
-    # batch_num /= num_workers
-    # if is_first_worker:
-    #     logging.info('batch_num={}'.format(batch_num))
 
     if args.bleu == 'tweaked':
         bpe = bool(args.dataset != 'IWSLT2015' and args.dataset != 'TOY')
@@ -341,6 +337,8 @@ def train():
                 trainer.set_learning_rate(new_lr)
             src_wc, tgt_wc, bs = np.sum([(shard[2].sum(), shard[3].sum(), shard[0].shape[0])
                                          for shard in seqs], axis=0)
+            # fetch the local shard
+            seqs = [seqs[rank]]
             seqs = [[seq.as_in_context(context) for seq in shard]
                     for context, shard in zip(ctx, seqs)]
             Ls = []
