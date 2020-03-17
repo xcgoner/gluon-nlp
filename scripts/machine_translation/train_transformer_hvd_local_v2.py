@@ -363,9 +363,9 @@ def train():
                     for context, shard in zip(ctx, seqs)]
             Ls = []
 
-            # sync
-            if sgd_sync:
-                trainer.allreduce_params()
+            # # sync
+            # if sgd_sync:
+            #     trainer.allreduce_params()
 
             for seq in seqs:
                 parallel.put((seq, args.batch_size))
@@ -376,9 +376,9 @@ def train():
                 if average_param_dict is None:
                     average_param_dict = {k: v.data(ctx[0]).copy() for k, v in
                                           model.collect_params().items()}
-                # sync
-                if sgd_sync:
-                    trainer.allreduce_states()
+                # # sync
+                # if sgd_sync:
+                #     trainer.allreduce_states()
                 sgd_sync = trainer.step(float(loss_denom) / args.batch_size / rescale_loss)
                 param_dict = model.collect_params()
                 param_dict.zero_grad()
