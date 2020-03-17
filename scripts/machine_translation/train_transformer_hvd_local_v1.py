@@ -53,6 +53,8 @@ from bleu import _bpe_to_words, compute_bleu
 from translation import BeamSearchTranslator
 from utils import logging_config
 
+from local_sgd_trainer_v1 import LocalHVDTrainerV1
+
 # to sync processes
 from mpi4py import MPI
 mpi_comm = MPI.COMM_WORLD
@@ -141,6 +143,8 @@ parser.add_argument('--save_dir', type=str, default='transformer_out',
                     help='directory path to save the final model and training log')
 parser.add_argument('--gpu', action='store_true',
                     help='turn on to use gpu')
+parser.add_argument('--local_sgd_interval', type=int, default=6,
+                    help='synchronization interval')
 args = parser.parse_args()
 logging_config(args.save_dir)
 
@@ -287,8 +291,9 @@ def train():
     """Training function."""
     # use horovod
     hvd.broadcast_parameters(model.collect_params(), root_rank=0)
-    trainer = hvd.DistributedTrainer(model.collect_params(), args.optimizer,
-                            {'learning_rate': args.lr, 'beta2': 0.98, 'epsilon': 1e-9})
+    trainer = LocalHVDTrainerV1(model.collect_params(), args.optimizer, 
+                            {'learning_rate': args.lr, 'beta2': 0.98, 'epsilon': 1e-9}, 
+                            local_sgd_interval=args.local_sgd_interval)
 
     # use num_shards to split training data
     train_data_loader, val_data_loader, test_data_loader \
@@ -319,32 +324,46 @@ def train():
     average_param_dict = None
     model.collect_params().zero_grad()
     parallel = Parallel(num_ctxs, parallel_model)
+    mx.nd.waitall()
+    mpi_comm.barrier()
     for epoch_id in range(args.epochs):
         log_avg_loss = 0
         log_wc = 0
-        batch_wc = 0
+        batch_wc_global = 0
         loss_denom = 0
         step_loss = 0
+        sgd_sync = False
         start_epoch_time = time.time()
         log_start_time = time.time()
         for batch_id, seqs \
                 in enumerate(train_data_loader):
             if batch_id % grad_interval == 0:
                 step_num += 1
+                # sync_num = step_num / args.local_sgd_interval
                 new_lr = args.lr / math.sqrt(args.num_units) \
                          * min(1. / math.sqrt(step_num), step_num * warmup_steps ** (-1.5))
                 trainer.set_learning_rate(new_lr)
+            src_wc_global, tgt_wc_global, bs_global = np.sum([(shard[2].sum(), shard[3].sum(), shard[0].shape[0])
+                                         for shard in seqs], axis=0)
+            src_wc_global = src_wc_global.asscalar()
+            tgt_wc_global = tgt_wc_global.asscalar()
+            loss_denom_global += tgt_wc_global - bs_global
+            batch_wc_global += src_wc_global + tgt_wc_global
+            # fetch the local shard
+            seqs = [seqs[rank]]
             src_wc, tgt_wc, bs = np.sum([(shard[2].sum(), shard[3].sum(), shard[0].shape[0])
                                          for shard in seqs], axis=0)
             src_wc = src_wc.asscalar()
             tgt_wc = tgt_wc.asscalar()
             loss_denom += tgt_wc - bs
-            batch_wc += src_wc + tgt_wc
-            # fetch the local shard
-            seqs = [seqs[rank]]
             seqs = [[seq.as_in_context(context) for seq in shard]
                     for context, shard in zip(ctx, seqs)]
             Ls = []
+
+            # sync
+            if sgd_sync:
+                trainer.allreduce_params()
+
             for seq in seqs:
                 parallel.put((seq, args.batch_size))
             Ls = [parallel.get() for _ in range(len(ctx))]
@@ -354,24 +373,26 @@ def train():
                 if average_param_dict is None:
                     average_param_dict = {k: v.data(ctx[0]).copy() for k, v in
                                           model.collect_params().items()}
-
-                # gradients are already averaged by hvd
-                trainer.step(float(loss_denom) / args.batch_size / rescale_loss / num_workers)
+                # sync
+                if sgd_sync:
+                    trainer.allreduce_states()
+                sgd_sync = trainer.step(float(loss_denom) / args.batch_size / rescale_loss)
                 param_dict = model.collect_params()
                 param_dict.zero_grad()
                 if step_num > average_start:
                     alpha = 1. / max(1, step_num - average_start)
                     for name, average_param in average_param_dict.items():
                         average_param[:] += alpha * (param_dict[name].data(ctx[0]) - average_param)
-                log_wc += batch_wc
-            # put asscalar() after step()
+                log_wc += batch_wc_global
             step_loss += sum([L.asscalar() for L in Ls])
+
             if batch_id % grad_interval == grad_interval - 1 or\
                     batch_id == len(train_data_loader) - 1:
-                log_avg_loss += step_loss / loss_denom * args.batch_size * rescale_loss
+                log_avg_loss += step_loss / loss_denom_global * args.batch_size * rescale_loss
                 loss_denom = 0
+                loss_denom_global = 0
                 step_loss = 0
-                batch_wc = 0
+                batch_wc_global = 0
             if (batch_id + 1) % (args.log_interval * grad_interval) == 0:
                 # sync step_loss
                 log_avg_loss = mpi_comm.allreduce(log_avg_loss, op=MPI.SUM)
@@ -391,6 +412,8 @@ def train():
         if is_first_worker:
             logging.info('Epoch {} took {:.2f} seconds.'.format(epoch_id, end_epoch_time - start_epoch_time))
         if epoch_id >= 5:
+            # trainer.allreduce_params()
+            # trainer.allreduce_states()
             valid_loss, valid_translation_out = evaluate(val_data_loader, ctx[0])
             valid_bleu_score, _, _, _, _ = compute_bleu([val_tgt_sentences], valid_translation_out,
                                                         tokenized=tokenized, tokenizer=args.bleu,
