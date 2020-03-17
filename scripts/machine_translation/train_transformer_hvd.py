@@ -362,12 +362,14 @@ def train():
                                           model.collect_params().items()}
                 
                 # sync loss_denom, batch_wc, step_loss
-                allreduce_nd = mx.nd.array([loss_denom, batch_wc, step_loss])
-                hvd.allreduce_(allreduce_nd, name='allreduce_nd', average=False)
-                allreduce_np = allreduce_nd.asnumpy()
-                loss_denom = np.asscalar(allreduce_np[0])
-                batch_wc = np.asscalar(allreduce_np[1])
-                step_loss = np.asscalar(allreduce_np[2])
+                # allreduce_nd = mx.nd.array([loss_denom, batch_wc, step_loss])
+                # hvd.allreduce_(allreduce_nd, name='allreduce_nd', average=False)
+                # allreduce_np = allreduce_nd.asnumpy()
+                # loss_denom = np.asscalar(allreduce_np[0])
+                # batch_wc = np.asscalar(allreduce_np[1])
+                # step_loss = np.asscalar(allreduce_np[2])
+                mpi_comm.Allreduce([loss_denom, batch_wc, step_loss], op=MPI.SUM)
+
                 log_wc += batch_wc
 
                 # gradients are already averaged by hvd
