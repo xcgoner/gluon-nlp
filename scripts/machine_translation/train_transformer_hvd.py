@@ -366,11 +366,11 @@ def train():
                 # loss_denom = np.asscalar(allreduce_np[0])
                 # batch_wc = np.asscalar(allreduce_np[1])
                 # step_loss = np.asscalar(allreduce_np[2])
-                allreduce_np = np.array([loss_denom, batch_wc, step_loss])
-                allreduce_np = mpi_comm.allreduce(allreduce_np, op=MPI.SUM)
-                loss_denom = np.asscalar(allreduce_np[0])
-                batch_wc = np.asscalar(allreduce_np[1])
-                step_loss = np.asscalar(allreduce_np[2])
+                # allreduce_np = np.array([loss_denom, batch_wc, step_loss])
+                # allreduce_np = mpi_comm.allreduce(allreduce_np, op=MPI.SUM)
+                # loss_denom = np.asscalar(allreduce_np[0])
+                # batch_wc = np.asscalar(allreduce_np[1])
+                # step_loss = np.asscalar(allreduce_np[2])
                 # loss_denom = mpi_comm.allreduce(loss_denom, op=MPI.SUM)
                 # batch_wc = mpi_comm.allreduce(batch_wc, op=MPI.SUM)
                 # step_loss = mpi_comm.allreduce(step_loss, op=MPI.SUM)
@@ -385,7 +385,8 @@ def train():
                     alpha = 1. / max(1, step_num - average_start)
                     for name, average_param in average_param_dict.items():
                         average_param[:] += alpha * (param_dict[name].data(ctx[0]) - average_param)
-
+                # sync step_loss
+                step_loss = mpi_comm.allreduce(step_loss, op=MPI.SUM)
                 log_avg_loss += step_loss / loss_denom * args.batch_size * rescale_loss
                 loss_denom = 0
                 step_loss = 0
