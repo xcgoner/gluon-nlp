@@ -368,7 +368,8 @@ def train():
                 # loss_denom = np.asscalar(allreduce_np[0])
                 # batch_wc = np.asscalar(allreduce_np[1])
                 # step_loss = np.asscalar(allreduce_np[2])
-                mpi_comm.Allreduce([loss_denom, batch_wc, step_loss], op=MPI.SUM)
+                allreduce_list = [loss_denom, batch_wc, step_loss]
+                allreduce_list = mpi_comm.allreduce(allreduce_list, op=MPI.SUM)
 
                 log_wc += batch_wc
 
