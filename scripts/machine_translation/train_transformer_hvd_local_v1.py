@@ -331,6 +331,7 @@ def train():
         log_wc = 0
         batch_wc_global = 0
         loss_denom = 0
+        loss_denom_global = 0
         step_loss = 0
         sgd_sync = False
         start_epoch_time = time.time()
