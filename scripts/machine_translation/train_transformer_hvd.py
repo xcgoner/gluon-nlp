@@ -347,22 +347,27 @@ def train():
                 parallel.put((seq, args.batch_size))
             Ls = [parallel.get() for _ in range(len(ctx))]
 
+            step_loss += sum([L.asscalar() for L in Ls])
+
             src_wc = src_wc.asscalar()
             tgt_wc = tgt_wc.asscalar()
             loss_denom += tgt_wc - bs
-            # sync loss_denom, src_wc, tgt_wc
-            allreduce_nd = mx.nd.array([loss_denom, src_wc, tgt_wc])
-            hvd.allreduce_(allreduce_nd, name='allreduce_nd', average=False)
-            allreduce_np = allreduce_nd.asnumpy()
-            loss_denom = np.asscalar(allreduce_np[0])
-            src_wc = np.asscalar(allreduce_np[1])
-            tgt_wc = np.asscalar(allreduce_np[2])
 
             if batch_id % grad_interval == grad_interval - 1 or\
                     batch_id == len(train_data_loader) - 1:
                 if average_param_dict is None:
                     average_param_dict = {k: v.data(ctx[0]).copy() for k, v in
                                           model.collect_params().items()}
+                
+                # sync loss_denom, src_wc, tgt_wc, step_loss
+                allreduce_nd = mx.nd.array([loss_denom, src_wc, tgt_wc, step_loss])
+                hvd.allreduce_(allreduce_nd, name='allreduce_nd', average=False)
+                allreduce_np = allreduce_nd.asnumpy()
+                loss_denom = np.asscalar(allreduce_np[0])
+                src_wc = np.asscalar(allreduce_np[1])
+                tgt_wc = np.asscalar(allreduce_np[2])
+                step_loss = np.asscalar(allreduce_np[3])
+
                 # gradients are already averaged by hvd
                 trainer.step(float(loss_denom) / args.batch_size / rescale_loss / num_workers)
                 param_dict = model.collect_params()
@@ -371,15 +376,7 @@ def train():
                     alpha = 1. / max(1, step_num - average_start)
                     for name, average_param in average_param_dict.items():
                         average_param[:] += alpha * (param_dict[name].data(ctx[0]) - average_param)
-            step_loss += sum([L.asscalar() for L in Ls])
 
-            # sync step_loss
-            step_loss_nd = mx.nd.array([step_loss])
-            hvd.allreduce_(step_loss_nd, name='step_loss', average=False)
-            step_loss = np.asscalar(step_loss_nd.asnumpy())
-
-            if batch_id % grad_interval == grad_interval - 1 or\
-                    batch_id == len(train_data_loader) - 1:
                 log_avg_loss += step_loss / loss_denom * args.batch_size * rescale_loss
                 loss_denom = 0
                 step_loss = 0
