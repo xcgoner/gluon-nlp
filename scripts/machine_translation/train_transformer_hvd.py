@@ -290,11 +290,10 @@ def train():
     trainer = hvd.DistributedTrainer(model.collect_params(), args.optimizer,
                             {'learning_rate': args.lr, 'beta2': 0.98, 'epsilon': 1e-9})
 
-    # use num_shards and shard_id to split training data
+    # use num_shards to split training data
     train_data_loader, val_data_loader, test_data_loader \
         = dataprocessor.make_dataloader(data_train, data_val, data_test, args,
-                                        use_average_length=True, num_shards=num_workers, 
-                                        shard_id=rank)
+                                        use_average_length=True, num_shards=num_workers)
 
     batch_num = len(train_data_loader)
     if is_first_worker:
@@ -385,13 +384,13 @@ def train():
                     alpha = 1. / max(1, step_num - average_start)
                     for name, average_param in average_param_dict.items():
                         average_param[:] += alpha * (param_dict[name].data(ctx[0]) - average_param)
-                # sync step_loss
-                step_loss = mpi_comm.allreduce(step_loss, op=MPI.SUM)
                 log_avg_loss += step_loss / loss_denom * args.batch_size * rescale_loss
                 loss_denom = 0
                 step_loss = 0
                 batch_wc = 0
             if (batch_id + 1) % (args.log_interval * grad_interval) == 0:
+                # sync step_loss
+                log_avg_loss = mpi_comm.allreduce(log_avg_loss, op=MPI.SUM)
                 wps = log_wc / (time.time() - log_start_time)
                 if is_first_worker:
                     logging.info('[Epoch {} Batch {}/{}] loss={:.4f}, ppl={:.4f}, '
