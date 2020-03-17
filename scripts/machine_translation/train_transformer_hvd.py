@@ -352,6 +352,7 @@ def train():
             src_wc = src_wc.asscalar()
             tgt_wc = tgt_wc.asscalar()
             loss_denom += tgt_wc - bs
+            log_wc += src_wc + tgt_wc
 
             if batch_id % grad_interval == grad_interval - 1 or\
                     batch_id == len(train_data_loader) - 1:
@@ -360,13 +361,12 @@ def train():
                                           model.collect_params().items()}
                 
                 # sync loss_denom, src_wc, tgt_wc, step_loss
-                allreduce_nd = mx.nd.array([loss_denom, src_wc, tgt_wc, step_loss])
+                allreduce_nd = mx.nd.array([loss_denom, log_wc, step_loss])
                 hvd.allreduce_(allreduce_nd, name='allreduce_nd', average=False)
                 allreduce_np = allreduce_nd.asnumpy()
                 loss_denom = np.asscalar(allreduce_np[0])
-                src_wc = np.asscalar(allreduce_np[1])
-                tgt_wc = np.asscalar(allreduce_np[2])
-                step_loss = np.asscalar(allreduce_np[3])
+                log_wc = np.asscalar(allreduce_np[1])
+                step_loss = np.asscalar(allreduce_np[2])
 
                 # gradients are already averaged by hvd
                 trainer.step(float(loss_denom) / args.batch_size / rescale_loss / num_workers)
@@ -380,7 +380,6 @@ def train():
                 log_avg_loss += step_loss / loss_denom * args.batch_size * rescale_loss
                 loss_denom = 0
                 step_loss = 0
-            log_wc += src_wc + tgt_wc
             if (batch_id + 1) % (args.log_interval * grad_interval) == 0:
                 wps = log_wc / (time.time() - log_start_time)
                 if is_first_worker:
