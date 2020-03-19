@@ -139,8 +139,8 @@ class LocalHVDTrainerV2(mx.gluon.Trainer):
                 if param._stype == 'default':
                     hvd.allreduce_(mean, average=True, 
                                    name=str(i+len(self._params)), priority=i-len(self._params)*2)
-                    var[:] *= self._coef2
-                    var[:] += (1-self._coef2) * square( ( mean - self._coef1*cached_mean ) / (1-self._coef1) )
+                    var[:] *= self._beta2
+                    var[:] += (1-self._beta2) * square( ( mean - self._coef1*cached_mean ) / (1-self._coef1) )
                     cached_mean[:] = mean
                 else:
                     raise ValueError("Cannot pull row_sparse parameters for local SGD")
