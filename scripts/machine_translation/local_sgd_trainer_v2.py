@@ -136,7 +136,6 @@ class LocalHVDTrainerV2(mx.gluon.Trainer):
             if param.grad_req != 'null':
                 mean, var = self._updaters[0].states[i]
                 cached_mean = self._cached_mean[i]
-                cached_var = self._cached_var[i]
                 if param._stype == 'default':
                     hvd.allreduce_(mean, average=True, 
                                    name=str(i+len(self._params)), priority=i-len(self._params)*2)
