@@ -51,7 +51,6 @@ class LocalHVDTrainerV2(mx.gluon.Trainer):
         self._coef2 = beta2**local_sgd_interval
 
         self._cached_mean = []
-        self._cached_var = []
         # self._coef2 = beta2
 
         # print(self._local_sgd_interval)
@@ -128,12 +127,10 @@ class LocalHVDTrainerV2(mx.gluon.Trainer):
             # initialize the extra states
             for i, param in enumerate(self._params):
                 if param.grad_req != 'null':
-                    mean, var = self._updaters[0].states[i]
+                    mean, _ = self._updaters[0].states[i]
                     self._cached_mean.append(zeros_like(mean))
-                    self._cached_var.append(zeros_like(var))
                 else:
                     self._cached_mean.append([])
-                    self._cached_var.append([])
 
         for i, param in reversed(list(enumerate(self._params))):
             if param.grad_req != 'null':
@@ -143,9 +140,8 @@ class LocalHVDTrainerV2(mx.gluon.Trainer):
                 if param._stype == 'default':
                     hvd.allreduce_(mean, average=True, 
                                    name=str(i+len(self._params)), priority=i-len(self._params)*2)
-                    cached_var[:] *= self._coef2
-                    cached_var[:] += (1-self._coef2) * square( ( mean - self._coef1*cached_mean ) / (1-self._coef1) )
+                    var[:] *= self._beta2
+                    var[:] += (1-self._beta2) * square( ( mean - self._coef1*cached_mean ) / (1-self._coef1) )
                     cached_mean[:] = mean
-                    var[:] = cached_var
                 else:
                     raise ValueError("Cannot pull row_sparse parameters for local SGD")
